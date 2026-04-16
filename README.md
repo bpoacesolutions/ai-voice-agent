@@ -16,11 +16,11 @@ The system is designed with a clean separation between interface, backend logic,
 ## Architecture
 
 ```text
-Voice Client (app/)
-↓
-API Backend (api/)
-↓
-LLM Service (Ollama)
+Voice Client (app/)        OR        Web Interface (web/)
+            ↓
+        API Backend (api/)
+            ↓
+     LLM Service (Ollama)
 ```
 
 ---
@@ -29,10 +29,10 @@ LLM Service (Ollama)
 
 ### Voice Client (`app/`)
 
-Handles user interaction:
+Handles user interaction via Python:
 
 * audio recording (microphone)
-* speech-to-text transcription
+* speech-to-text transcription (Whisper)
 * API communication
 * text-to-speech playback
 
@@ -40,6 +40,22 @@ Entry point:
 
 ```bash
 python app/main.py
+```
+
+---
+
+### Web Interface (`web/`)
+
+Lightweight browser-based UI:
+
+* text input
+* API communication
+* response display
+
+Run:
+
+```text
+open web/index.html
 ```
 
 ---
@@ -119,9 +135,9 @@ Response:
 ## Full Pipeline
 
 ```text
-Speech input
-↓
-Speech-to-text (Whisper)
+Speech input (Python client)
+        OR
+Text input (Web UI)
 ↓
 API request (/ask)
 ↓
@@ -131,7 +147,9 @@ Prompt construction
 ↓
 LLM response
 ↓
-Text-to-speech
+Text-to-speech (Python client)
+        OR
+Text display (Web UI)
 ```
 
 ---
@@ -154,11 +172,25 @@ uvicorn api.server:app
 
 ---
 
-### 3. Start Voice Client
+### 3A. Run Voice Client (Python)
 
 ```bash
 python app/main.py
 ```
+
+---
+
+### 3B. Run Web Interface (Browser)
+
+```text
+open web/index.html
+```
+
+---
+
+## CORS Configuration
+
+CORS is enabled in the API to allow communication between the browser and backend during local development.
 
 ---
 
@@ -167,23 +199,27 @@ python app/main.py
 * fully local execution
 * modular architecture (client / backend / model)
 * semantic memory retrieval
-* continuous voice interaction loop
+* continuous interaction loop (voice or text)
 * API-first design (ready for web or mobile integration)
+* dual interface (CLI voice + browser UI)
 
 ---
 
 ## Limitations
 
-* fixed recording duration
+* fixed recording duration (voice client)
 * noticeable latency (especially TTS)
 * no streaming responses
 * in-memory storage (no persistence)
+* web UI does not yet preserve conversation history
 
 ---
 
 ## Future Improvements
 
-* browser-based interface
+* conversation timeline in web UI
+* browser-based voice input (microphone)
+* audio playback in browser
 * real-time speech detection (VAD)
 * streaming responses
 * faster / higher quality TTS
@@ -194,10 +230,11 @@ python app/main.py
 
 ## Summary
 
-This project demonstrates a complete AI system with:
+This project demonstrates a complete full-stack AI system with:
 
-* a voice interface
-* a backend service
+* a voice interface (Python)
+* a browser interface (Web)
+* a backend API service
 * a local language model
 
 and a clean separation of concerns suitable for real-world applications.

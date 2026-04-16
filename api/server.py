@@ -5,8 +5,18 @@ import requests
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # ---- Setup ----
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allow all (fine for local dev)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 #embedding_model = SentenceTransformer("all-MiniLM-L6-v2")

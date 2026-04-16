@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Voice Agent</title>
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 600px;
+            margin: 50px auto;
+            text-align: center;
+        }
+        input {
+            width: 80%;
+            padding: 10px;
+            margin: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        .box {
+            margin-top: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>AI Agent</h2>
+
+    <input id="query" placeholder="Ask something..." />
+    <br>
+    <button onclick="ask()">Send</button>
+
+    <div class="box">
+        <strong>You:</strong>
+        <p id="userText"></p>
+
+        <strong>Agent:</strong>
+        <p id="responseText"></p>
+    </div>
+
+    <script>
+        async function ask() {
+            const query = document.getElementById("query").value;
+
+            document.getElementById("userText").innerText = query;
+            document.getElementById("responseText").innerText = "Thinking...";
+
+            const res = await fetch("http://127.0.0.1:8000/ask", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ query: query })
+            });
+
+            const data = await res.json();
+
+            document.getElementById("responseText").innerText = data.response;
+        }
+    </script>
+
+</body>
+</html>
