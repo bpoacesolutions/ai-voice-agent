@@ -30,6 +30,7 @@
 
     <input id="query" placeholder="Ask something..." />
     <br>
+    <button onclick="startListening()">🎤 Speak</button>
     <button onclick="ask()">Send</button>
 
     <div class="box">
@@ -41,6 +42,20 @@
     </div>
 
     <script>
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = "en-US";
+        recognition.continuous = false;
+
+        function startListening() {
+            recognition.start();
+        }
+
+        recognition.onresult = function(event) {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById("query").value = transcript;
+            ask(); // auto-send
+        };
+
         async function ask() {
             const query = document.getElementById("query").value;
 
