@@ -27,7 +27,7 @@
 <body>
 
     <h2>AI Agent</h2>
-
+    <p id="status">Idle</p>
     <input id="query" placeholder="Ask something..." />
     <br>
     <button onclick="startListening()">🎤 Speak</button>
@@ -42,6 +42,10 @@
     </div>
 
     <script>
+        speechSynthesis.onvoiceschanged = () => {
+            console.log("Voices loaded");
+        };
+
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
         recognition.lang = "en-US";
         recognition.continuous = false;
@@ -50,9 +54,20 @@
             recognition.start();
         }
 
+        recognition.onstart = function() {
+            console.log("🎙️ Listening started");
+            document.getElementById("status").innerText = "🎤 Listening...";
+        };
+
+        recognition.onend = function() {
+            console.log("🛑 Listening ended");
+            document.getElementById("status").innerText = "Processing...";
+        };
+
         recognition.onresult = function(event) {
             const transcript = event.results[0][0].transcript;
             document.getElementById("query").value = transcript;
+            document.getElementById("status").innerText = "Thinking...";
             ask(); // auto-send
         };
 
@@ -73,8 +88,72 @@
             const data = await res.json();
 
             document.getElementById("responseText").innerText = data.response;
+            document.getElementById("status").innerText = "🔊 Speaking...";
+            speak(data.response);
+        }
+
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = "en-US";
+
+            utterance.onend = () => {
+                document.getElementById("status").innerText = "Idle";
+            };
+
+            // Optional: pick a nicer voice
+            const voices = speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.lang === "en-US");
+            if (preferred) {
+                utterance.voice = preferred;
+            }
+
+            speechSynthesis.speak(utterance);
         }
     </script>
+
+    <!-- <script>
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            alert("❌ Speech Recognition NOT supported in this browser");
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.continuous = false;
+
+        function startListening() {
+            console.log("🎤 Button clicked");
+
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Start error:", e);
+            }
+        }
+
+        recognition.onstart = function() {
+            console.log("🎙️ Listening started");
+        };
+
+        recognition.onresult = function(event) {
+            console.log("✅ Result received");
+
+            const transcript = event.results[0][0].transcript;
+            document.getElementById("query").value = transcript;
+
+            ask();
+        };
+
+        recognition.onerror = function(event) {
+            console.error("❌ Error:", event.error);
+            alert("Speech error: " + event.error);
+        };
+
+        recognition.onend = function() {
+            console.log("🛑 Listening ended");
+        };
+    </script> -->
 
 </body>
 </html>

@@ -9,13 +9,18 @@ This project implements a modular AI voice agent capable of:
 * generating responses using a language model
 * replying with synthesized speech
 
-The system is designed with a clean separation between interface, backend logic, and model execution, and supports both **Python-based voice interaction** and **browser-based interaction**.
+The system supports both:
+
+* a **Python-based voice client**
+* a **browser-based voice interface (full input/output loop)**
+
+It is designed with a clean separation between interface, backend logic, and model execution.
 
 ---
 
 ## Architecture
 
-```text id="3z9t5h"
+```text
 Voice Client (app/)        OR        Web Interface (web/)
             ↓
         API Backend (api/)
@@ -29,16 +34,16 @@ Voice Client (app/)        OR        Web Interface (web/)
 
 ### Voice Client (`app/`)
 
-Handles user interaction via Python:
+Handles interaction via Python:
 
 * audio recording (microphone)
 * speech-to-text transcription (Whisper)
 * API communication
 * text-to-speech playback
 
-Entry point:
+Run:
 
-```bash id="f6n9xu"
+```bash
 python app/main.py
 ```
 
@@ -46,23 +51,24 @@ python app/main.py
 
 ### Web Interface (`web/`)
 
-Lightweight browser-based UI with voice capabilities:
+Browser-based voice assistant with full interaction loop:
 
 * text input
 * microphone input (speech recognition)
-* automatic API communication
+* automatic API requests
 * response display
+* text-to-speech playback (browser)
 
 Run:
 
-```bash id="a7o2re"
+```bash
 cd web
 python -m http.server 3000
 ```
 
-Then open:
+Open:
 
-```text id="z2y5xv"
+```text
 http://localhost:3000
 ```
 
@@ -79,9 +85,9 @@ Responsibilities:
 * conversation history management
 * communication with the LLM
 
-Run with:
+Run:
 
-```bash id="ybrqk1"
+```bash
 uvicorn api.server:app
 ```
 
@@ -89,13 +95,13 @@ uvicorn api.server:app
 
 ### Language Model
 
-Powered by Ollama using:
+Powered by Ollama:
 
 * Llama 3
 
 Run locally:
 
-```bash id="9k5q5y"
+```bash
 ollama run llama3
 ```
 
@@ -122,7 +128,7 @@ Features:
 
 Request:
 
-```json id="m6o0rn"
+```json
 {
   "query": "What should I eat tonight?"
 }
@@ -130,7 +136,7 @@ Request:
 
 Response:
 
-```json id="p2t9nz"
+```json
 {
   "query": "...",
   "response": "...",
@@ -142,10 +148,12 @@ Response:
 
 ## Full Pipeline
 
-```text id="b7y9tw"
-Speech input (Python client)
+```text
+Voice input (Python or Browser)
         OR
-Speech/Text input (Web UI)
+Text input (Browser)
+↓
+Speech Recognition (if applicable)
 ↓
 API request (/ask)
 ↓
@@ -155,10 +163,40 @@ Prompt construction
 ↓
 LLM response
 ↓
-Text-to-speech (Python client)
-        OR
-Text display (Web UI)
+Text-to-speech (Python or Browser)
 ```
+
+---
+
+## Browser Voice Interaction
+
+The web interface uses native browser APIs to handle voice input and output.
+
+### Input (Speech Recognition)
+
+* Web Speech API
+* real-time transcription
+* automatic request triggering
+
+### Output (Speech Synthesis)
+
+* browser-native text-to-speech
+* automatic playback of responses
+
+---
+
+## Interaction Flow
+
+```text
+Idle
+→ 🎤 Listening...
+→ Processing...
+→ Thinking...
+→ 🔊 Speaking...
+→ Idle
+```
+
+A status indicator provides real-time feedback to the user.
 
 ---
 
@@ -166,7 +204,7 @@ Text display (Web UI)
 
 ### 1. Start LLM
 
-```bash id="g8o3dl"
+```bash
 ollama run llama3
 ```
 
@@ -174,7 +212,7 @@ ollama run llama3
 
 ### 2. Start API
 
-```bash id="j9m2pf"
+```bash
 uvicorn api.server:app
 ```
 
@@ -182,59 +220,30 @@ uvicorn api.server:app
 
 ### 3A. Run Voice Client (Python)
 
-```bash id="v8q1ye"
+```bash
 python app/main.py
 ```
 
 ---
 
-### 3B. Run Web Interface (Browser)
+### 3B. Run Web Interface
 
-```bash id="w3n1fa"
+```bash
 cd web
 python -m http.server 3000
 ```
 
-Then open:
+Open:
 
-```text id="x1c8dy"
+```text
 http://localhost:3000
-```
-
----
-
-## Browser Voice Interaction
-
-The web interface supports voice input using the browser’s Web Speech API.
-
-### Features
-
-* microphone-based input
-* real-time speech transcription
-* automatic request triggering
-* seamless API integration
-
-### How It Works
-
-```text id="y6k4zq"
-User clicks microphone
-↓
-Browser captures audio
-↓
-Speech Recognition (Web Speech API)
-↓
-Transcribed text inserted into input
-↓
-Automatic API request (/ask)
-↓
-LLM response displayed
 ```
 
 ---
 
 ## CORS Configuration
 
-CORS is enabled in the API to allow communication between the browser and backend during local development.
+CORS is enabled in the API to allow browser-to-backend communication during local development.
 
 ---
 
@@ -243,34 +252,35 @@ CORS is enabled in the API to allow communication between the browser and backen
 * fully local execution
 * modular architecture (client / backend / model)
 * semantic memory retrieval
-* continuous interaction loop (voice or text)
-* API-first design (ready for web or mobile integration)
+* continuous interaction loop (voice + text)
+* API-first design
 * dual interface:
 
   * Python voice client
-  * browser-based UI with speech input
+  * browser voice assistant (input + output)
+* real-time interaction feedback (status indicator)
 
 ---
 
 ## Limitations
 
-* fixed recording duration (Python client)
+* browser voice input only works in Chrome/Edge (not Firefox)
 * noticeable latency (especially TTS)
 * no streaming responses
 * in-memory storage (no persistence)
 * web UI does not preserve conversation history yet
-* no voice output in browser yet
+* voice quality depends on browser/OS
 
 ---
 
 ## Future Improvements
 
-* conversation timeline in web UI
-* browser-based text-to-speech (agent voice)
+* conversation timeline (chat-style UI)
+* streaming responses (faster perceived latency)
 * real-time speech detection (VAD)
-* streaming responses
-* faster / higher quality TTS
-* persistent memory (database)
+* improved memory (vector database)
+* tool integration (weather, finance, etc.)
+* persistent storage (database)
 * deployment (cloud / containerization)
 
 ---
@@ -280,8 +290,8 @@ CORS is enabled in the API to allow communication between the browser and backen
 This project demonstrates a complete full-stack AI system with:
 
 * a voice interface (Python)
-* a browser interface with speech input
+* a browser-based voice assistant (input + output)
 * a backend API service
 * a local language model
 
-and a clean separation of concerns aligned with real-world AI application architecture.
+It serves as a foundation for building real-world conversational AI applications.
