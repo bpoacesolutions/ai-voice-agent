@@ -22,6 +22,29 @@
             margin-top: 20px;
             text-align: left;
         }
+        .chat {
+            border: 1px solid #ccc;
+            height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .user {
+            background: #e3f2fd;
+            text-align: right;
+        }
+
+        .agent {
+            background: #f1f1f1;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -33,12 +56,9 @@
     <button onclick="startListening()">🎤 Speak</button>
     <button onclick="ask()">Send</button>
 
-    <div class="box">
-        <strong>You:</strong>
-        <p id="userText"></p>
-
-        <strong>Agent:</strong>
-        <p id="responseText"></p>
+    <div id="chat" class="chat">
+        
+        
     </div>
 
     <script>
@@ -74,8 +94,8 @@
         async function ask() {
             const query = document.getElementById("query").value;
 
-            document.getElementById("userText").innerText = query;
-            document.getElementById("responseText").innerText = "Thinking...";
+            addMessage("You: " + query, "user");
+            document.getElementById("status").innerText = "Thinking...";
 
             const res = await fetch("http://127.0.0.1:8000/ask", {
                 method: "POST",
@@ -87,9 +107,12 @@
 
             const data = await res.json();
 
-            document.getElementById("responseText").innerText = data.response;
+            addMessage("Agent: " + data.response, "agent");
+
             document.getElementById("status").innerText = "🔊 Speaking...";
             speak(data.response);
+
+            document.getElementById("query").value = "";
         }
 
         function speak(text) {
@@ -108,6 +131,19 @@
             }
 
             speechSynthesis.speak(utterance);
+        }
+
+        function addMessage(text, sender) {
+            const chat = document.getElementById("chat");
+
+            const msg = document.createElement("div");
+            msg.classList.add("message", sender);
+            msg.innerText = text;
+
+            chat.appendChild(msg);
+
+            // auto scroll
+            chat.scrollTop = chat.scrollHeight;
         }
     </script>
 

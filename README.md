@@ -12,7 +12,7 @@ This project implements a modular AI voice agent capable of:
 The system supports both:
 
 * a **Python-based voice client**
-* a **browser-based voice interface (full input/output loop)**
+* a **browser-based voice interface (full input/output loop with chat UI)**
 
 It is designed with a clean separation between interface, backend logic, and model execution.
 
@@ -20,7 +20,7 @@ It is designed with a clean separation between interface, backend logic, and mod
 
 ## Architecture
 
-```text
+```text id="2kq1yn"
 Voice Client (app/)        OR        Web Interface (web/)
             ↓
         API Backend (api/)
@@ -43,7 +43,7 @@ Handles interaction via Python:
 
 Run:
 
-```bash
+```bash id="v7x2kc"
 python app/main.py
 ```
 
@@ -51,24 +51,24 @@ python app/main.py
 
 ### Web Interface (`web/`)
 
-Browser-based voice assistant with full interaction loop:
+Browser-based voice assistant with a **chat-style interface**:
 
 * text input
 * microphone input (speech recognition)
 * automatic API requests
-* response display
+* **persistent conversation display (chat UI)**
 * text-to-speech playback (browser)
 
 Run:
 
-```bash
+```bash id="zq5l9w"
 cd web
 python -m http.server 3000
 ```
 
 Open:
 
-```text
+```text id="y8p2af"
 http://localhost:3000
 ```
 
@@ -87,7 +87,7 @@ Responsibilities:
 
 Run:
 
-```bash
+```bash id="o3rm9n"
 uvicorn api.server:app
 ```
 
@@ -101,7 +101,7 @@ Powered by Ollama:
 
 Run locally:
 
-```bash
+```bash id="4xj7qe"
 ollama run llama3
 ```
 
@@ -128,7 +128,7 @@ Features:
 
 Request:
 
-```json
+```json id="qk8m2r"
 {
   "query": "What should I eat tonight?"
 }
@@ -136,7 +136,7 @@ Request:
 
 Response:
 
-```json
+```json id="1j9v5c"
 {
   "query": "...",
   "response": "...",
@@ -148,7 +148,7 @@ Response:
 
 ## Full Pipeline
 
-```text
+```text id="p7z1wr"
 Voice input (Python or Browser)
         OR
 Text input (Browser)
@@ -164,6 +164,8 @@ Prompt construction
 LLM response
 ↓
 Text-to-speech (Python or Browser)
+↓
+Chat UI update (browser)
 ```
 
 ---
@@ -185,9 +187,36 @@ The web interface uses native browser APIs to handle voice input and output.
 
 ---
 
+## Chat Interface
+
+The web interface now includes a **chat-style conversation view**.
+
+### Features
+
+* messages are appended instead of replaced
+* clear distinction between user and agent messages
+* automatic scrolling
+* supports multi-turn conversations
+
+### Behavior
+
+```text id="g5r8zp"
+User message
+↓
+Displayed in chat
+↓
+API request
+↓
+Agent response
+↓
+Appended to chat
+```
+
+---
+
 ## Interaction Flow
 
-```text
+```text id="k1b3yt"
 Idle
 → 🎤 Listening...
 → Processing...
@@ -204,7 +233,7 @@ A status indicator provides real-time feedback to the user.
 
 ### 1. Start LLM
 
-```bash
+```bash id="9c1vqx"
 ollama run llama3
 ```
 
@@ -212,7 +241,7 @@ ollama run llama3
 
 ### 2. Start API
 
-```bash
+```bash id="0k2zrm"
 uvicorn api.server:app
 ```
 
@@ -220,7 +249,7 @@ uvicorn api.server:app
 
 ### 3A. Run Voice Client (Python)
 
-```bash
+```bash id="3f9pzn"
 python app/main.py
 ```
 
@@ -228,14 +257,14 @@ python app/main.py
 
 ### 3B. Run Web Interface
 
-```bash
+```bash id="8w2qjl"
 cd web
 python -m http.server 3000
 ```
 
 Open:
 
-```text
+```text id="6p4kdx"
 http://localhost:3000
 ```
 
@@ -259,6 +288,7 @@ CORS is enabled in the API to allow browser-to-backend communication during loca
   * Python voice client
   * browser voice assistant (input + output)
 * real-time interaction feedback (status indicator)
+* **chat-based conversation UI**
 
 ---
 
@@ -268,19 +298,18 @@ CORS is enabled in the API to allow browser-to-backend communication during loca
 * noticeable latency (especially TTS)
 * no streaming responses
 * in-memory storage (no persistence)
-* web UI does not preserve conversation history yet
+* chat history is not persisted (resets on refresh)
 * voice quality depends on browser/OS
 
 ---
 
 ## Future Improvements
 
-* conversation timeline (chat-style UI)
-* streaming responses (faster perceived latency)
+* persistent chat history (backend storage)
+* streaming responses (reduce latency)
 * real-time speech detection (VAD)
 * improved memory (vector database)
 * tool integration (weather, finance, etc.)
-* persistent storage (database)
 * deployment (cloud / containerization)
 
 ---
@@ -290,7 +319,7 @@ CORS is enabled in the API to allow browser-to-backend communication during loca
 This project demonstrates a complete full-stack AI system with:
 
 * a voice interface (Python)
-* a browser-based voice assistant (input + output)
+* a browser-based voice assistant (input + output + chat UI)
 * a backend API service
 * a local language model
 
