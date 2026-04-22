@@ -14,13 +14,13 @@ The system supports both:
 * a **Python-based voice client**
 * a **browser-based voice interface (full input/output loop with chat UI)**
 
-It is designed with a clean separation between interface, backend logic, and model execution.
+It is designed with a clean separation between interface, backend logic, and model execution, following a **service-oriented architecture**.
 
 ---
 
 ## Architecture
 
-```text id="2kq1yn"
+```text
 Voice Client (app/)        OR        Web Interface (web/)
             ↓
         API Backend (api/)
@@ -43,7 +43,7 @@ Handles interaction via Python:
 
 Run:
 
-```bash id="v7x2kc"
+```bash
 python app/main.py
 ```
 
@@ -61,14 +61,14 @@ Browser-based voice assistant with a **chat-style interface**:
 
 Run:
 
-```bash id="zq5l9w"
+```bash
 cd web
 python -m http.server 3000
 ```
 
 Open:
 
-```text id="y8p2af"
+```text
 http://localhost:3000
 ```
 
@@ -83,31 +83,53 @@ Responsibilities:
 * semantic memory retrieval (embeddings)
 * prompt construction
 * conversation history management
-* communication with the LLM
+* communication with the LLM service
 
 Run:
 
-```bash id="o3rm9n"
+```bash
 uvicorn api.server:app
 ```
 
 ---
 
-### Language Model
+### Language Model Service
 
-Powered by Ollama:
+Powered by Ollama using:
 
 * Llama 3
 
 Run locally:
 
-```bash id="4xj7qe"
+```bash
 ollama run llama3
 ```
 
 ---
 
-### Memory System
+## Important: LLM Service Dependency
+
+The API relies on a locally running LLM service.
+
+If Ollama is not running, requests to `/ask` will fail with connection errors.
+
+Typical error:
+
+```text
+ConnectionRefusedError: localhost:11434
+```
+
+### Resolution
+
+Always start the LLM before using the system:
+
+```bash
+ollama run llama3
+```
+
+---
+
+## Memory System
 
 Uses:
 
@@ -128,7 +150,7 @@ Features:
 
 Request:
 
-```json id="qk8m2r"
+```json
 {
   "query": "What should I eat tonight?"
 }
@@ -136,7 +158,7 @@ Request:
 
 Response:
 
-```json id="1j9v5c"
+```json
 {
   "query": "...",
   "response": "...",
@@ -148,7 +170,7 @@ Response:
 
 ## Full Pipeline
 
-```text id="p7z1wr"
+```text
 Voice input (Python or Browser)
         OR
 Text input (Browser)
@@ -161,6 +183,8 @@ Memory retrieval
 ↓
 Prompt construction
 ↓
+LLM request (Ollama)
+↓
 LLM response
 ↓
 Text-to-speech (Python or Browser)
@@ -172,7 +196,7 @@ Chat UI update (browser)
 
 ## Browser Voice Interaction
 
-The web interface uses native browser APIs to handle voice input and output.
+The web interface uses native browser APIs.
 
 ### Input (Speech Recognition)
 
@@ -189,7 +213,7 @@ The web interface uses native browser APIs to handle voice input and output.
 
 ## Chat Interface
 
-The web interface now includes a **chat-style conversation view**.
+The web interface includes a **chat-style conversation view**.
 
 ### Features
 
@@ -200,7 +224,7 @@ The web interface now includes a **chat-style conversation view**.
 
 ### Behavior
 
-```text id="g5r8zp"
+```text
 User message
 ↓
 Displayed in chat
@@ -216,7 +240,7 @@ Appended to chat
 
 ## Interaction Flow
 
-```text id="k1b3yt"
+```text
 Idle
 → 🎤 Listening...
 → Processing...
@@ -231,9 +255,9 @@ A status indicator provides real-time feedback to the user.
 
 ## Running the System
 
-### 1. Start LLM
+### 1. Start LLM Service
 
-```bash id="9c1vqx"
+```bash
 ollama run llama3
 ```
 
@@ -241,7 +265,7 @@ ollama run llama3
 
 ### 2. Start API
 
-```bash id="0k2zrm"
+```bash
 uvicorn api.server:app
 ```
 
@@ -249,7 +273,7 @@ uvicorn api.server:app
 
 ### 3A. Run Voice Client (Python)
 
-```bash id="3f9pzn"
+```bash
 python app/main.py
 ```
 
@@ -257,14 +281,14 @@ python app/main.py
 
 ### 3B. Run Web Interface
 
-```bash id="8w2qjl"
+```bash
 cd web
 python -m http.server 3000
 ```
 
 Open:
 
-```text id="6p4kdx"
+```text
 http://localhost:3000
 ```
 
@@ -288,7 +312,8 @@ CORS is enabled in the API to allow browser-to-backend communication during loca
   * Python voice client
   * browser voice assistant (input + output)
 * real-time interaction feedback (status indicator)
-* **chat-based conversation UI**
+* chat-based conversation UI
+* decoupled LLM service (production-like architecture)
 
 ---
 
@@ -300,6 +325,7 @@ CORS is enabled in the API to allow browser-to-backend communication during loca
 * in-memory storage (no persistence)
 * chat history is not persisted (resets on refresh)
 * voice quality depends on browser/OS
+* system depends on locally running LLM service
 
 ---
 
@@ -311,6 +337,7 @@ CORS is enabled in the API to allow browser-to-backend communication during loca
 * improved memory (vector database)
 * tool integration (weather, finance, etc.)
 * deployment (cloud / containerization)
+* LLM fallback / health check mechanism
 
 ---
 
@@ -321,6 +348,6 @@ This project demonstrates a complete full-stack AI system with:
 * a voice interface (Python)
 * a browser-based voice assistant (input + output + chat UI)
 * a backend API service
-* a local language model
+* a local language model service
 
-It serves as a foundation for building real-world conversational AI applications.
+It reflects real-world AI architecture patterns, including **service separation, dependency management, and conversational pipelines**, and serves as a solid foundation for building production-grade AI agents.
