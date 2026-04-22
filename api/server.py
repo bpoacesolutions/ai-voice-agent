@@ -23,9 +23,7 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 embedding_model = None
 # ---- Memory ----
 memory = [
-    "User likes Italian food",
-    "User prefers quick meals",
-    "User goes to the gym regularly"
+
 ]
 
 conversation_history = []

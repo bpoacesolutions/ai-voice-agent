@@ -55,6 +55,7 @@
     <br>
     <button onclick="startListening()">🎤 Speak</button>
     <button onclick="ask()">Send</button>
+    <button onclick="clearChat()">Clear</button>
 
     <div id="chat" class="chat">
         
@@ -62,6 +63,8 @@
     </div>
 
     <script>
+        let messages = [];
+
         speechSynthesis.onvoiceschanged = () => {
             console.log("Voices loaded");
         };
@@ -142,9 +145,39 @@
 
             chat.appendChild(msg);
 
-            // auto scroll
             chat.scrollTop = chat.scrollHeight;
+
+            // save in memory
+            messages.push({ text, sender });
+
+            // persist
+            localStorage.setItem("chat_history", JSON.stringify(messages));
         }
+        function clearChat() {
+            localStorage.removeItem("chat_history");
+            messages = [];
+            document.getElementById("chat").innerHTML = "";
+        }
+
+        window.onload = function () {
+            const saved = localStorage.getItem("chat_history");
+
+            if (saved) {
+                messages = JSON.parse(saved);
+
+                messages.forEach(m => {
+                    const chat = document.getElementById("chat");
+
+                    const msg = document.createElement("div");
+                    msg.classList.add("message", m.sender);
+                    msg.innerText = m.text;
+
+                    chat.appendChild(msg);
+                });
+
+                chat.scrollTop = chat.scrollHeight;
+            }
+        };
     </script>
 
     <!-- <script>
