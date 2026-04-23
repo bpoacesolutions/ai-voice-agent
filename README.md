@@ -12,7 +12,7 @@ This project implements a modular AI voice agent capable of:
 The system supports both:
 
 * a **Python-based voice client**
-* a **browser-based voice interface (full input/output loop with chat UI)**
+* a **browser-based voice assistant (full input/output loop with chat UI)**
 
 It is designed with a clean separation between interface, backend logic, and model execution, following a **service-oriented architecture**.
 
@@ -56,8 +56,9 @@ Browser-based voice assistant with a **chat-style interface**:
 * text input
 * microphone input (speech recognition)
 * automatic API requests
-* **persistent conversation display (chat UI)**
-* text-to-speech playback (browser)
+* persistent conversation display (localStorage)
+* browser-based text-to-speech playback
+* real-time interaction status (Listening / Thinking / Speaking)
 
 Run:
 
@@ -71,6 +72,23 @@ Open:
 ```text
 http://localhost:3000
 ```
+
+---
+
+## Browser Compatibility (Important)
+
+The voice features rely on the **Web Speech API**, which is **not supported in all browsers**.
+
+### Supported
+
+* Chrome ✅
+* Edge ✅
+
+### Not Supported
+
+* Firefox ❌
+
+If the microphone button appears unresponsive, ensure you are using **Chrome** and that microphone permissions are enabled.
 
 ---
 
@@ -95,7 +113,7 @@ uvicorn api.server:app
 
 ### Language Model Service
 
-Powered by Ollama using:
+Powered by Ollama:
 
 * Llama 3
 
@@ -109,11 +127,9 @@ ollama run llama3
 
 ## Important: LLM Service Dependency
 
-The API relies on a locally running LLM service.
+The API depends on a locally running LLM service.
 
-If Ollama is not running, requests to `/ask` will fail with connection errors.
-
-Typical error:
+If Ollama is not running, requests to `/ask` will fail with connection errors such as:
 
 ```text
 ConnectionRefusedError: localhost:11434
@@ -121,7 +137,7 @@ ConnectionRefusedError: localhost:11434
 
 ### Resolution
 
-Always start the LLM before using the system:
+Start the LLM before using the system:
 
 ```bash
 ollama run llama3
@@ -203,11 +219,13 @@ The web interface uses native browser APIs.
 * Web Speech API
 * real-time transcription
 * automatic request triggering
+* error handling and fallback feedback
 
 ### Output (Speech Synthesis)
 
 * browser-native text-to-speech
-* automatic playback of responses
+* dynamic voice selection (when available)
+* playback status tracking
 
 ---
 
@@ -217,24 +235,11 @@ The web interface includes a **chat-style conversation view**.
 
 ### Features
 
-* messages are appended instead of replaced
-* clear distinction between user and agent messages
+* messages are appended (not replaced)
+* clear distinction between user and agent
 * automatic scrolling
-* supports multi-turn conversations
-
-### Behavior
-
-```text
-User message
-↓
-Displayed in chat
-↓
-API request
-↓
-Agent response
-↓
-Appended to chat
-```
+* multi-turn conversations
+* persisted locally (via localStorage)
 
 ---
 
@@ -249,7 +254,7 @@ Idle
 → Idle
 ```
 
-A status indicator provides real-time feedback to the user.
+A status indicator provides real-time feedback during interaction.
 
 ---
 
@@ -312,32 +317,33 @@ CORS is enabled in the API to allow browser-to-backend communication during loca
   * Python voice client
   * browser voice assistant (input + output)
 * real-time interaction feedback (status indicator)
-* chat-based conversation UI
-* decoupled LLM service (production-like architecture)
+* chat-based UI with persistence
+* decoupled LLM service (production-style architecture)
+* improved frontend robustness (error handling, browser checks)
 
 ---
 
 ## Limitations
 
-* browser voice input only works in Chrome/Edge (not Firefox)
+* browser voice input only works in Chrome/Edge
 * noticeable latency (especially TTS)
 * no streaming responses
-* in-memory storage (no persistence)
-* chat history is not persisted (resets on refresh)
+* in-memory backend storage (no persistence)
+* chat history is only stored locally (browser)
 * voice quality depends on browser/OS
-* system depends on locally running LLM service
+* requires local LLM service to be running
 
 ---
 
 ## Future Improvements
 
-* persistent chat history (backend storage)
+* vector memory (FAISS) for semantic long-term memory
+* persistent backend storage (database)
 * streaming responses (reduce latency)
 * real-time speech detection (VAD)
-* improved memory (vector database)
 * tool integration (weather, finance, etc.)
 * deployment (cloud / containerization)
-* LLM fallback / health check mechanism
+* LLM health checks / fallback mechanisms
 
 ---
 
@@ -350,4 +356,4 @@ This project demonstrates a complete full-stack AI system with:
 * a backend API service
 * a local language model service
 
-It reflects real-world AI architecture patterns, including **service separation, dependency management, and conversational pipelines**, and serves as a solid foundation for building production-grade AI agents.
+It reflects real-world AI architecture patterns, including **service separation, dependency management, and conversational pipelines**, and serves as a strong foundation for building production-grade AI agents.

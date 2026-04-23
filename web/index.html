@@ -18,10 +18,6 @@
             padding: 10px 20px;
             cursor: pointer;
         }
-        .box {
-            margin-top: 20px;
-            text-align: left;
-        }
         .chat {
             border: 1px solid #ccc;
             height: 400px;
@@ -29,18 +25,15 @@
             padding: 10px;
             text-align: left;
         }
-
         .message {
             margin: 10px 0;
             padding: 8px;
             border-radius: 8px;
         }
-
         .user {
             background: #e3f2fd;
             text-align: right;
         }
-
         .agent {
             background: #f1f1f1;
             text-align: left;
@@ -51,61 +44,81 @@
 
     <h2>AI Agent</h2>
     <p id="status">Idle</p>
+
     <input id="query" placeholder="Ask something..." />
     <br>
     <button onclick="startListening()">🎤 Speak</button>
     <button onclick="ask()">Send</button>
     <button onclick="clearChat()">Clear</button>
 
-    <div id="chat" class="chat">
-        
-        
-    </div>
+    <div id="chat" class="chat"></div>
 
     <script>
         let messages = [];
 
-        speechSynthesis.onvoiceschanged = () => {
-            console.log("Voices loaded");
-        };
+        // -------------------------
+        // Speech Recognition Setup
+        // -------------------------
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = "en-US";
-        recognition.continuous = false;
+        let recognition = null;
 
-        function startListening() {
-            recognition.start();
+        if (!SpeechRecognition) {
+            alert("❌ Speech Recognition not supported (use Chrome)");
+        } else {
+            recognition = new SpeechRecognition();
+            recognition.lang = "en-US";
+            recognition.continuous = false;
+
+            recognition.onstart = () => {
+                document.getElementById("status").innerText = "🎤 Listening...";
+            };
+
+            recognition.onend = () => {
+                document.getElementById("status").innerText = "Processing...";
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech error:", event.error);
+                document.getElementById("status").innerText = "Error: " + event.error;
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById("query").value = transcript;
+                document.getElementById("status").innerText = "Thinking...";
+                ask();
+            };
         }
 
-        recognition.onstart = function() {
-            console.log("🎙️ Listening started");
-            document.getElementById("status").innerText = "🎤 Listening...";
-        };
+        function startListening() {
+            if (!recognition) {
+                alert("Speech recognition not available");
+                return;
+            }
 
-        recognition.onend = function() {
-            console.log("🛑 Listening ended");
-            document.getElementById("status").innerText = "Processing...";
-        };
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Start error:", e);
+            }
+        }
 
-        recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript;
-            document.getElementById("query").value = transcript;
-            document.getElementById("status").innerText = "Thinking...";
-            ask(); // auto-send
-        };
-
+        // -------------------------
+        // Ask API
+        // -------------------------
         async function ask() {
             const query = document.getElementById("query").value;
+
+            if (!query) return;
 
             addMessage("You: " + query, "user");
             document.getElementById("status").innerText = "Thinking...";
 
             const res = await fetch("http://127.0.0.1:8000/ask", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ query: query })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query })
             });
 
             const data = await res.json();
@@ -118,24 +131,30 @@
             document.getElementById("query").value = "";
         }
 
+        // -------------------------
+        // Text-to-Speech
+        // -------------------------
         function speak(text) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = "en-US";
+
+            const voices = speechSynthesis.getVoices();
+
+            if (voices.length > 0) {
+                const preferred = voices.find(v => v.lang === "en-US");
+                if (preferred) utterance.voice = preferred;
+            }
 
             utterance.onend = () => {
                 document.getElementById("status").innerText = "Idle";
             };
 
-            // Optional: pick a nicer voice
-            const voices = speechSynthesis.getVoices();
-            const preferred = voices.find(v => v.lang === "en-US");
-            if (preferred) {
-                utterance.voice = preferred;
-            }
-
             speechSynthesis.speak(utterance);
         }
 
+        // -------------------------
+        // Chat UI
+        // -------------------------
         function addMessage(text, sender) {
             const chat = document.getElementById("chat");
 
@@ -144,21 +163,21 @@
             msg.innerText = text;
 
             chat.appendChild(msg);
-
             chat.scrollTop = chat.scrollHeight;
 
-            // save in memory
             messages.push({ text, sender });
-
-            // persist
             localStorage.setItem("chat_history", JSON.stringify(messages));
         }
+
         function clearChat() {
             localStorage.removeItem("chat_history");
             messages = [];
             document.getElementById("chat").innerHTML = "";
         }
 
+        // -------------------------
+        // Load history
+        // -------------------------
         window.onload = function () {
             const saved = localStorage.getItem("chat_history");
 
@@ -166,63 +185,17 @@
                 messages = JSON.parse(saved);
 
                 messages.forEach(m => {
-                    const chat = document.getElementById("chat");
-
                     const msg = document.createElement("div");
                     msg.classList.add("message", m.sender);
                     msg.innerText = m.text;
-
-                    chat.appendChild(msg);
+                    document.getElementById("chat").appendChild(msg);
                 });
 
-                chat.scrollTop = chat.scrollHeight;
+                document.getElementById("chat").scrollTop =
+                    document.getElementById("chat").scrollHeight;
             }
         };
     </script>
-
-    <!-- <script>
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-        if (!SpeechRecognition) {
-            alert("❌ Speech Recognition NOT supported in this browser");
-        }
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = "en-US";
-        recognition.continuous = false;
-
-        function startListening() {
-            console.log("🎤 Button clicked");
-
-            try {
-                recognition.start();
-            } catch (e) {
-                console.error("Start error:", e);
-            }
-        }
-
-        recognition.onstart = function() {
-            console.log("🎙️ Listening started");
-        };
-
-        recognition.onresult = function(event) {
-            console.log("✅ Result received");
-
-            const transcript = event.results[0][0].transcript;
-            document.getElementById("query").value = transcript;
-
-            ask();
-        };
-
-        recognition.onerror = function(event) {
-            console.error("❌ Error:", event.error);
-            alert("Speech error: " + event.error);
-        };
-
-        recognition.onend = function() {
-            console.log("🛑 Listening ended");
-        };
-    </script> -->
 
 </body>
 </html>

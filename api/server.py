@@ -7,6 +7,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.memory_store import MemoryStore
+
 # ---- Setup ----
 app = FastAPI()
 
@@ -22,9 +24,7 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 #embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 embedding_model = None
 # ---- Memory ----
-memory = [
-
-]
+memory_store = MemoryStore()
 
 conversation_history = []
 
@@ -47,12 +47,7 @@ def ask_agent(request: QueryRequest):
     model = get_model()
 
     # ---- Retrieve memory ----
-    memory_embeddings = model.encode(memory)
-    query_embedding = model.encode([query])
-
-    scores = cosine_similarity(query_embedding, memory_embeddings)[0]
-    top_indices = scores.argsort()[-2:][::-1]
-    relevant_memory = [memory[i] for i in top_indices]
+    relevant_memory = memory_store.search(query, k=3)
 
     # ---- Context ----
     context = "\n".join(relevant_memory)
@@ -85,6 +80,10 @@ Answer:
     )
 
     answer = response.json()["response"]
+
+    #---- store conversation into memory ---#
+    memory_store.add(f"User: {query}")
+    memory_store.add(f"Agent: {answer}")
 
     # ---- Update history ----
     conversation_history.append(f"User: {query}")
