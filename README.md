@@ -4,9 +4,9 @@
 
 This project implements a modular AI voice agent capable of:
 
-* understanding spoken input
-* retrieving contextual memory
-* generating responses using a language model
+* understanding spoken or typed input
+* retrieving contextual memory using vector search (FAISS)
+* generating responses using a local language model
 * replying with synthesized speech
 
 The system supports both:
@@ -14,7 +14,7 @@ The system supports both:
 * a **Python-based voice client**
 * a **browser-based voice assistant (full input/output loop with chat UI)**
 
-It is designed with a clean separation between interface, backend logic, and model execution, following a **service-oriented architecture**.
+It follows a **service-oriented architecture**, separating interface, backend logic, and model execution.
 
 ---
 
@@ -39,7 +39,7 @@ Handles interaction via Python:
 * audio recording (microphone)
 * speech-to-text transcription (Whisper)
 * API communication
-* text-to-speech playback
+* text-to-speech playback (pyttsx3 with multiprocessing)
 
 Run:
 
@@ -77,7 +77,7 @@ http://localhost:3000
 
 ## Browser Compatibility (Important)
 
-The voice features rely on the **Web Speech API**, which is **not supported in all browsers**.
+Voice input relies on the **Web Speech API**.
 
 ### Supported
 
@@ -88,19 +88,19 @@ The voice features rely on the **Web Speech API**, which is **not supported in a
 
 * Firefox ❌
 
-If the microphone button appears unresponsive, ensure you are using **Chrome** and that microphone permissions are enabled.
+If the microphone button appears unresponsive, use **Chrome** and allow microphone access.
 
 ---
 
 ### API Backend (`api/`)
 
-Built with FastAPI
+Built with FastAPI.
 
 Responsibilities:
 
-* semantic memory retrieval (embeddings)
+* semantic memory retrieval (FAISS vector search)
 * prompt construction
-* conversation history management
+* short-term conversation tracking
 * communication with the LLM service
 
 Run:
@@ -125,19 +125,17 @@ ollama run llama3
 
 ---
 
-## Important: LLM Service Dependency
+## Important: LLM Dependency
 
-The API depends on a locally running LLM service.
+The API depends on a locally running LLM.
 
-If Ollama is not running, requests to `/ask` will fail with connection errors such as:
+If Ollama is not running, requests will fail with:
 
 ```text
 ConnectionRefusedError: localhost:11434
 ```
 
-### Resolution
-
-Start the LLM before using the system:
+Start it before using the system:
 
 ```bash
 ollama run llama3
@@ -147,16 +145,29 @@ ollama run llama3
 
 ## Memory System
 
+### Current Design
+
 Uses:
 
-* sentence-transformers
-* scikit-learn
+* sentence-transformers (`all-MiniLM-L6-v2`)
+* FAISS (vector similarity search)
 
-Features:
+Capabilities:
 
-* semantic similarity search
-* contextual memory retrieval
-* short-term conversation history
+* semantic retrieval of past interactions
+* contextual grounding for responses
+
+### Important Limitation
+
+The system currently uses **only semantic memory**, which means:
+
+* works well for similar phrasing
+* may fail for **structured recall** (e.g. “how many pets do I have?”)
+
+This highlights the need for:
+
+* structured user memory (profile layer)
+* improved retrieval strategies
 
 ---
 
@@ -195,7 +206,7 @@ Speech Recognition (if applicable)
 ↓
 API request (/ask)
 ↓
-Memory retrieval
+Vector memory retrieval (FAISS)
 ↓
 Prompt construction
 ↓
@@ -210,36 +221,17 @@ Chat UI update (browser)
 
 ---
 
-## Browser Voice Interaction
-
-The web interface uses native browser APIs.
-
-### Input (Speech Recognition)
-
-* Web Speech API
-* real-time transcription
-* automatic request triggering
-* error handling and fallback feedback
-
-### Output (Speech Synthesis)
-
-* browser-native text-to-speech
-* dynamic voice selection (when available)
-* playback status tracking
-
----
-
 ## Chat Interface
 
 The web interface includes a **chat-style conversation view**.
 
-### Features
+Features:
 
-* messages are appended (not replaced)
-* clear distinction between user and agent
+* messages appended (not replaced)
+* clear user/agent separation
 * automatic scrolling
 * multi-turn conversations
-* persisted locally (via localStorage)
+* persisted locally via localStorage
 
 ---
 
@@ -254,106 +246,65 @@ Idle
 → Idle
 ```
 
-A status indicator provides real-time feedback during interaction.
-
----
-
-## Running the System
-
-### 1. Start LLM Service
-
-```bash
-ollama run llama3
-```
-
----
-
-### 2. Start API
-
-```bash
-uvicorn api.server:app
-```
-
----
-
-### 3A. Run Voice Client (Python)
-
-```bash
-python app/main.py
-```
-
----
-
-### 3B. Run Web Interface
-
-```bash
-cd web
-python -m http.server 3000
-```
-
-Open:
-
-```text
-http://localhost:3000
-```
-
----
-
-## CORS Configuration
-
-CORS is enabled in the API to allow browser-to-backend communication during local development.
-
 ---
 
 ## Features
 
 * fully local execution
+
 * modular architecture (client / backend / model)
-* semantic memory retrieval
+
+* semantic memory with FAISS
+
 * continuous interaction loop (voice + text)
+
 * API-first design
+
 * dual interface:
 
   * Python voice client
-  * browser voice assistant (input + output)
+  * browser voice assistant
+
 * real-time interaction feedback (status indicator)
+
 * chat-based UI with persistence
+
 * decoupled LLM service (production-style architecture)
-* improved frontend robustness (error handling, browser checks)
 
 ---
 
 ## Limitations
 
 * browser voice input only works in Chrome/Edge
-* noticeable latency (especially TTS)
+* noticeable latency (LLM + TTS)
 * no streaming responses
-* in-memory backend storage (no persistence)
-* chat history is only stored locally (browser)
-* voice quality depends on browser/OS
-* requires local LLM service to be running
+* backend memory is not persisted (resets on restart)
+* vector memory is not sufficient for structured facts
+* chat history only stored locally (browser)
+* requires local LLM service
 
 ---
 
 ## Future Improvements
 
-* vector memory (FAISS) for semantic long-term memory
-* persistent backend storage (database)
-* streaming responses (reduce latency)
+* structured user memory (profile layer)
+* persistent memory storage (disk or database)
+* hybrid retrieval (semantic + structured)
+* streaming responses
 * real-time speech detection (VAD)
-* tool integration (weather, finance, etc.)
-* deployment (cloud / containerization)
-* LLM health checks / fallback mechanisms
+* tool integration (APIs, external data)
+* deployment (Docker / cloud)
+* LLM health checks & fallback
 
 ---
 
 ## Summary
 
-This project demonstrates a complete full-stack AI system with:
+This project demonstrates a full-stack AI system with:
 
-* a voice interface (Python)
-* a browser-based voice assistant (input + output + chat UI)
-* a backend API service
-* a local language model service
+* voice interaction (Python + browser)
+* semantic memory (FAISS)
+* backend API orchestration
+* local LLM integration
 
-It reflects real-world AI architecture patterns, including **service separation, dependency management, and conversational pipelines**, and serves as a strong foundation for building production-grade AI agents.
+It serves as a strong foundation for building **production-grade conversational AI agents**, and highlights key challenges such as **memory design and retrieval strategy**.
