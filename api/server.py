@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.memory_store import MemoryStore
 
+from app.user_profile import UserProfile
+
 # ---- Setup ----
 app = FastAPI()
 
@@ -28,9 +30,36 @@ memory_store = MemoryStore()
 
 conversation_history = []
 
+#user profile
+user_profile = UserProfile()
+
 # ---- Request schema ----
 class QueryRequest(BaseModel):
     query: str
+
+
+def extract_user_info(text: str):
+    text = text.lower()
+    info = {}
+
+    # --- pets ---
+    if "cat" in text:
+        if "three" in text or "3" in text:
+            info["cats"] = 3
+
+    if "dog" in text:
+        if "one" in text or "1" in text:
+            info["dogs"] = 1
+
+    if "fish" in text:
+        if "one" in text or "1" in text:
+            info["fish"] = 1
+
+    # --- hobbies ---
+    if "fishing" in text:
+        info["hobby"] = "fishing"
+
+    return info
 
 
 @app.post("/ask")
@@ -53,9 +82,18 @@ def ask_agent(request: QueryRequest):
     context = "\n".join(relevant_memory)
     history_text = "\n".join(conversation_history[-4:])
 
+    # ---- Extract structured info ----
+    extracted_info = extract_user_info(query)
+    user_profile.update(extracted_info)
+
+    profile_context = user_profile.get_context()
+
     # ---- Prompt ----
     prompt = f"""
 You are a helpful AI assistant.
+
+User profile:
+{profile_context}
 
 Context:
 {context}
