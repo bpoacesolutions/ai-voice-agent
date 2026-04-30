@@ -6,6 +6,7 @@ This project implements a modular AI voice agent capable of:
 
 * understanding spoken or typed input
 * retrieving contextual memory using vector search (FAISS)
+* **extracting and storing structured knowledge from conversations**
 * generating responses using a local language model
 * replying with synthesized speech
 
@@ -99,6 +100,7 @@ Built with FastAPI.
 Responsibilities:
 
 * semantic memory retrieval (FAISS vector search)
+* **LLM-based memory enrichment (fact extraction)**
 * prompt construction
 * short-term conversation tracking
 * communication with the LLM service
@@ -151,23 +153,35 @@ Uses:
 
 * sentence-transformers (`all-MiniLM-L6-v2`)
 * FAISS (vector similarity search)
+* **LLM-based memory summarization**
 
-Capabilities:
+### How It Works
+
+After each interaction:
+
+1. Raw conversation is stored
+2. The LLM extracts **structured facts**
+3. Facts are added to vector memory
+
+Example:
+
+```text
+User: I have 3 cats and 1 dog
+```
+
+Stored as:
+
+```text
+User: I have 3 cats and 1 dog
+User owns 3 cats
+User owns 1 dog
+```
+
+### Capabilities
 
 * semantic retrieval of past interactions
-* contextual grounding for responses
-
-### Important Limitation
-
-The system currently uses **only semantic memory**, which means:
-
-* works well for similar phrasing
-* may fail for **structured recall** (e.g. “how many pets do I have?”)
-
-This highlights the need for:
-
-* structured user memory (profile layer)
-* improved retrieval strategies
+* improved recall via structured facts
+* domain-independent memory (no hardcoding)
 
 ---
 
@@ -214,6 +228,8 @@ LLM request (Ollama)
 ↓
 LLM response
 ↓
+Memory enrichment (fact extraction)
+↓
 Text-to-speech (Python or Browser)
 ↓
 Chat UI update (browser)
@@ -256,6 +272,8 @@ Idle
 
 * semantic memory with FAISS
 
+* **LLM-powered memory enrichment (structured facts)**
+
 * continuous interaction loop (voice + text)
 
 * API-first design
@@ -279,7 +297,8 @@ Idle
 * noticeable latency (LLM + TTS)
 * no streaming responses
 * backend memory is not persisted (resets on restart)
-* vector memory is not sufficient for structured facts
+* memory retrieval is still purely semantic (no hybrid search yet)
+* reasoning over memory is not fully reliable yet
 * chat history only stored locally (browser)
 * requires local LLM service
 
@@ -287,9 +306,9 @@ Idle
 
 ## Future Improvements
 
-* structured user memory (profile layer)
+* improve memory usage in prompts (stronger grounding)
+* hybrid retrieval (semantic + keyword)
 * persistent memory storage (disk or database)
-* hybrid retrieval (semantic + structured)
 * streaming responses
 * real-time speech detection (VAD)
 * tool integration (APIs, external data)
@@ -304,7 +323,8 @@ This project demonstrates a full-stack AI system with:
 
 * voice interaction (Python + browser)
 * semantic memory (FAISS)
+* **LLM-driven knowledge extraction**
 * backend API orchestration
 * local LLM integration
 
-It serves as a strong foundation for building **production-grade conversational AI agents**, and highlights key challenges such as **memory design and retrieval strategy**.
+It now moves beyond simple conversation history and introduces **knowledge-aware memory**, forming the basis of a real **RAG-style AI agent**.

@@ -1,101 +1,85 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-
-import requests
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.memory_store import MemoryStore
+import requests
 
-from app.user_profile import UserProfile
+from app.memory_store import MemoryStore
 
 # ---- Setup ----
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all (fine for local dev)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-#embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-embedding_model = None
+
 # ---- Memory ----
 memory_store = MemoryStore()
-
 conversation_history = []
-
-#user profile
-user_profile = UserProfile()
 
 # ---- Request schema ----
 class QueryRequest(BaseModel):
     query: str
 
 
-def extract_user_info(text: str):
-    text = text.lower()
-    info = {}
+# ---- Memory Summarizer ----
+def summarize_memory(query, answer):
+    prompt = f"""
+Extract key facts about the user from this conversation.
 
-    # --- pets ---
-    if "cat" in text:
-        if "three" in text or "3" in text:
-            info["cats"] = 3
+Focus on durable information (things that remain true over time).
 
-    if "dog" in text:
-        if "one" in text or "1" in text:
-            info["dogs"] = 1
+Avoid conversational phrases.
 
-    if "fish" in text:
-        if "one" in text or "1" in text:
-            info["fish"] = 1
+Examples:
+- User owns 3 cats
+- User works as a developer
+- User lives in Paris
 
-    # --- hobbies ---
-    if "fishing" in text:
-        info["hobby"] = "fishing"
+Conversation:
+User: {query}
+Agent: {answer}
 
-    return info
+Facts:
+"""
+
+    response = requests.post(
+        OLLAMA_URL,
+        json={
+            "model": "llama3",
+            "prompt": prompt,
+            "stream": False
+        }
+    )
+
+    return response.json()["response"].strip()
 
 
+# ---- API Endpoint ----
 @app.post("/ask")
 def ask_agent(request: QueryRequest):
     query = request.query
 
-    #
-    def get_model():
-        global embedding_model
-        if embedding_model is None:
-            embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-        return embedding_model
-    
-    model = get_model()
-
     # ---- Retrieve memory ----
-    relevant_memory = memory_store.search(query, k=3)
+    relevant_memory = memory_store.search(query, k=6)
 
     # ---- Context ----
     context = "\n".join(relevant_memory)
     history_text = "\n".join(conversation_history[-4:])
 
-    # ---- Extract structured info ----
-    extracted_info = extract_user_info(query)
-    user_profile.update(extracted_info)
-
-    profile_context = user_profile.get_context()
-
     # ---- Prompt ----
     prompt = f"""
 You are a helpful AI assistant.
 
-User profile:
-{profile_context}
+Use the provided memory context if relevant.
 
-Context:
+Memory:
 {context}
 
 Conversation history:
@@ -107,7 +91,7 @@ User question:
 Answer:
 """
 
-    # ---- LLM ----
+    # ---- LLM Call ----
     response = requests.post(
         OLLAMA_URL,
         json={
@@ -119,9 +103,27 @@ Answer:
 
     answer = response.json()["response"]
 
-    #---- store conversation into memory ---#
+    # ---- Store raw conversation ----
     memory_store.add(f"User: {query}")
     memory_store.add(f"Agent: {answer}")
+
+    # ---- Store enriched memory ----
+    try:
+        summary = summarize_memory(query, answer)
+
+        facts = [
+            f.strip("- ").strip()
+            for f in summary.split("\n")
+            if f.strip()
+        ]
+
+        for fact in facts:
+            # filter noise
+            if len(fact) > 10 and "user" in fact.lower():
+                memory_store.add(fact)
+
+    except Exception as e:
+        print("Memory summarization failed:", e)
 
     # ---- Update history ----
     conversation_history.append(f"User: {query}")
