@@ -12,11 +12,11 @@ model = whisper.load_model("base")
 
 
 def record_audio(filename="input.wav", duration=3, fs=16000):
-    print("🎤 Recording...")
+    print("Recording...")
     recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
     sd.wait()
     wav.write(filename, fs, recording)
-    print("✅ Recording complete")
+    print("Recording complete")
 
 
 def transcribe_audio(filename="input.wav"):
@@ -46,7 +46,7 @@ def main():
         record_audio()
         query = transcribe_audio()
 
-        print(f"\n🧑 You: {query}")
+        print(f"\nYou: {query}")
 
         # ---- CALL API ----
         response = requests.post(
@@ -57,7 +57,7 @@ def main():
         data = response.json()
         answer = data["response"]
 
-        print(f"\n🤖 Agent: {answer}")
+        print(f"\nAgent: {answer}")
 
         speak(answer)
 

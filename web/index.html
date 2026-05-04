@@ -47,7 +47,7 @@
 
     <input id="query" placeholder="Ask something..." />
     <br>
-    <button onclick="startListening()">🎤 Speak</button>
+    <button onclick="startListening()">Speak</button>
     <button onclick="ask()">Send</button>
     <button onclick="clearChat()">Clear</button>
 
@@ -64,14 +64,14 @@
         let recognition = null;
 
         if (!SpeechRecognition) {
-            alert("❌ Speech Recognition not supported (use Chrome)");
+            alert("Speech Recognition not supported (use Chrome)");
         } else {
             recognition = new SpeechRecognition();
             recognition.lang = "en-US";
             recognition.continuous = false;
 
             recognition.onstart = () => {
-                document.getElementById("status").innerText = "🎤 Listening...";
+                document.getElementById("status").innerText = "Listening...";
             };
 
             recognition.onend = () => {
@@ -125,7 +125,7 @@
 
             addMessage("Agent: " + data.response, "agent");
 
-            document.getElementById("status").innerText = "🔊 Speaking...";
+            document.getElementById("status").innerText = "Speaking...";
             speak(data.response);
 
             document.getElementById("query").value = "";

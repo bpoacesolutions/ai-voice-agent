@@ -30,7 +30,7 @@ class MemoryStore:
             with open(self.texts_path, "r") as f:
                 self.texts = json.load(f)
         else:
-            print("🆕 Creating new memory store...")
+            print("Creating new memory store...")
             self.index = faiss.IndexFlatL2(self.dimension)
             self.texts = []
 
@@ -66,8 +66,10 @@ class MemoryStore:
         )
 
         results = []
-        for idx in indices[0]:
+
+        for i, idx in enumerate(indices[0]):
             if idx < len(self.texts):
-                results.append(self.texts[idx])
+                score = distances[0][i]
+                results.append((self.texts[idx], score))
 
         return results

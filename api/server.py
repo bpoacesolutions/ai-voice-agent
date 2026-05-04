@@ -34,7 +34,6 @@ def summarize_memory(query, answer):
 Extract key facts about the user from this conversation.
 
 Focus on durable information (things that remain true over time).
-
 Avoid conversational phrases.
 
 Examples:
@@ -58,7 +57,7 @@ Facts:
         }
     )
 
-    return response.json()["response"].strip()
+    return response.json().get("response", "").strip()
 
 
 # ---- API Endpoint ----
@@ -66,24 +65,39 @@ Facts:
 def ask_agent(request: QueryRequest):
     query = request.query
 
-    # ---- Retrieve memory ----
-    relevant_memory = memory_store.search(query, k=6)
+    # ---- Retrieve memory (vector search) ----
+    raw_memory = memory_store.search(query, k=6)
+
+    # ---- Filter memory (lower distance = better) ----
+    filtered_memory = [
+        text for text, score in raw_memory if score < 1.5
+    ]
+
+    # fallback if filtering too aggressive
+    if not filtered_memory:
+        filtered_memory = [text for text, _ in raw_memory[:3]]
 
     # ---- Context ----
-    context = "\n".join(relevant_memory)
+    context = "\n".join(filtered_memory)
     history_text = "\n".join(conversation_history[-4:])
 
-    # ---- Prompt ----
+    # ---- Prompt (IMPROVED) ----
     prompt = f"""
 You are a helpful AI assistant.
 
-Use the provided memory context if relevant.
+Use ALL available information to answer accurately.
 
-Memory:
+Memory (past facts):
 {context}
 
-Conversation history:
+Recent conversation:
 {history_text}
+
+Instructions:
+- Use memory when relevant
+- If the user asks about past facts, rely on memory
+- If multiple facts exist, combine them logically
+- Do NOT say "I don't know" if the answer exists in memory
 
 User question:
 {query}
@@ -92,16 +106,21 @@ Answer:
 """
 
     # ---- LLM Call ----
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": "llama3",
-            "prompt": prompt,
-            "stream": False
-        }
-    )
+    try:
+        response = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": "llama3",
+                "prompt": prompt,
+                "stream": False
+            }
+        )
 
-    answer = response.json()["response"]
+        answer = response.json().get("response", "Error: no response from model")
+
+    except Exception as e:
+        print("LLM call failed:", e)
+        answer = "Error: LLM service unavailable"
 
     # ---- Store raw conversation ----
     memory_store.add(f"User: {query}")
@@ -118,7 +137,7 @@ Answer:
         ]
 
         for fact in facts:
-            # filter noise
+            # keep only meaningful user facts
             if len(fact) > 10 and "user" in fact.lower():
                 memory_store.add(fact)
 
@@ -132,5 +151,5 @@ Answer:
     return {
         "query": query,
         "response": answer,
-        "memory_used": relevant_memory
+        "memory_used": filtered_memory
     }

@@ -6,7 +6,7 @@ This project implements a modular AI voice agent capable of:
 
 * understanding spoken or typed input
 * retrieving contextual memory using vector search (FAISS)
-* **extracting and storing structured knowledge from conversations**
+* extracting and storing structured knowledge from conversations
 * generating responses using a local language model
 * replying with synthesized speech
 
@@ -82,12 +82,12 @@ Voice input relies on the **Web Speech API**.
 
 ### Supported
 
-* Chrome ✅
-* Edge ✅
+* Chrome
+* Edge
 
 ### Not Supported
 
-* Firefox ❌
+* Firefox
 
 If the microphone button appears unresponsive, use **Chrome** and allow microphone access.
 
@@ -100,8 +100,9 @@ Built with FastAPI.
 Responsibilities:
 
 * semantic memory retrieval (FAISS vector search)
-* **LLM-based memory enrichment (fact extraction)**
-* prompt construction
+* LLM-based memory enrichment (fact extraction)
+* memory filtering (distance-based relevance)
+* prompt construction with guided reasoning
 * short-term conversation tracking
 * communication with the LLM service
 
@@ -153,17 +154,26 @@ Uses:
 
 * sentence-transformers (`all-MiniLM-L6-v2`)
 * FAISS (vector similarity search)
-* **LLM-based memory summarization**
+* LLM-based memory summarization
+* distance-based filtering for retrieval quality
+
+---
 
 ### How It Works
 
 After each interaction:
 
 1. Raw conversation is stored
-2. The LLM extracts **structured facts**
-3. Facts are added to vector memory
+2. The LLM extracts **durable user facts**
+3. Facts are stored as independent memory entries
+4. Future queries retrieve relevant memories via FAISS
+5. Low-quality matches are filtered using similarity distance
 
-Example:
+---
+
+### Example
+
+Input:
 
 ```text
 User: I have 3 cats and 1 dog
@@ -177,11 +187,21 @@ User owns 3 cats
 User owns 1 dog
 ```
 
-### Capabilities
+---
 
-* semantic retrieval of past interactions
-* improved recall via structured facts
-* domain-independent memory (no hardcoding)
+### Retrieval Improvement (Unit 1.3)
+
+The system now uses **filtered semantic retrieval**:
+
+* retrieves top-k memories
+* removes low-relevance results (distance threshold)
+* falls back to best matches if filtering is too strict
+
+This significantly improves:
+
+* recall accuracy
+* consistency of answers
+* resistance to noisy memory
 
 ---
 
@@ -222,7 +242,9 @@ API request (/ask)
 ↓
 Vector memory retrieval (FAISS)
 ↓
-Prompt construction
+Memory filtering (distance threshold)
+↓
+Prompt construction (guided reasoning)
 ↓
 LLM request (Ollama)
 ↓
@@ -272,7 +294,9 @@ Idle
 
 * semantic memory with FAISS
 
-* **LLM-powered memory enrichment (structured facts)**
+* LLM-powered memory enrichment (structured facts)
+
+* **improved retrieval with filtering (Unit 1.3)**
 
 * continuous interaction loop (voice + text)
 
@@ -297,8 +321,8 @@ Idle
 * noticeable latency (LLM + TTS)
 * no streaming responses
 * backend memory is not persisted (resets on restart)
-* memory retrieval is still purely semantic (no hybrid search yet)
-* reasoning over memory is not fully reliable yet
+* no structured reasoning layer (prompt-based only)
+* aggregation logic (e.g. “total pets”) is still imperfect
 * chat history only stored locally (browser)
 * requires local LLM service
 
@@ -306,9 +330,11 @@ Idle
 
 ## Future Improvements
 
-* improve memory usage in prompts (stronger grounding)
-* hybrid retrieval (semantic + keyword)
+* memory deduplication and ranking (Unit 1.4)
+* memory reset endpoint (conversation lifecycle control)
+* structured user profile layer (hybrid memory)
 * persistent memory storage (disk or database)
+* hybrid retrieval (semantic + keyword / structured)
 * streaming responses
 * real-time speech detection (VAD)
 * tool integration (APIs, external data)
@@ -323,8 +349,9 @@ This project demonstrates a full-stack AI system with:
 
 * voice interaction (Python + browser)
 * semantic memory (FAISS)
-* **LLM-driven knowledge extraction**
+* LLM-driven knowledge extraction
+* improved retrieval with filtering and prompt guidance
 * backend API orchestration
 * local LLM integration
 
-It now moves beyond simple conversation history and introduces **knowledge-aware memory**, forming the basis of a real **RAG-style AI agent**.
+It now moves beyond simple conversation history and introduces **knowledge-aware memory with retrieval control**, forming the foundation of a real **RAG-style AI agent**.
