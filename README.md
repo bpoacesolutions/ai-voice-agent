@@ -60,6 +60,7 @@ Browser-based voice assistant with a **chat-style interface**:
 * persistent conversation display (localStorage)
 * browser-based text-to-speech playback
 * real-time interaction status (Listening / Thinking / Speaking)
+* **memory reset (sync with backend)**
 
 Run:
 
@@ -104,6 +105,7 @@ Responsibilities:
 * memory filtering (distance-based relevance)
 * prompt construction with guided reasoning
 * short-term conversation tracking
+* **memory lifecycle control (reset endpoint)**
 * communication with the LLM service
 
 Run:
@@ -191,21 +193,48 @@ User owns 1 dog
 
 ### Retrieval Improvement (Unit 1.3)
 
-The system now uses **filtered semantic retrieval**:
+The system uses **filtered semantic retrieval**:
 
 * retrieves top-k memories
 * removes low-relevance results (distance threshold)
-* falls back to best matches if filtering is too strict
+* fallback ensures minimum context availability
 
-This significantly improves:
+This improves:
 
 * recall accuracy
-* consistency of answers
-* resistance to noisy memory
+* consistency
+* robustness against noisy memory
 
 ---
 
-## API Endpoint
+### Memory Control (Unit 1.4)
+
+A **memory reset system** is now implemented:
+
+* backend endpoint: `POST /reset`
+
+* clears:
+
+  * FAISS index
+  * stored memory texts
+  * conversation history
+
+* frontend “Clear” button now:
+
+  * clears UI (localStorage)
+  * calls backend reset
+  * synchronizes full system state
+
+This enables:
+
+* clean conversation sessions
+* better debugging
+* controlled experimentation
+* production-like state management
+
+---
+
+## API Endpoints
 
 ### POST `/ask`
 
@@ -224,6 +253,18 @@ Response:
   "query": "...",
   "response": "...",
   "memory_used": [...]
+}
+```
+
+---
+
+### POST `/reset`
+
+Response:
+
+```json
+{
+  "status": "memory_cleared"
 }
 ```
 
@@ -261,8 +302,6 @@ Chat UI update (browser)
 
 ## Chat Interface
 
-The web interface includes a **chat-style conversation view**.
-
 Features:
 
 * messages appended (not replaced)
@@ -270,6 +309,7 @@ Features:
 * automatic scrolling
 * multi-turn conversations
 * persisted locally via localStorage
+* **synchronized reset with backend memory**
 
 ---
 
@@ -289,29 +329,17 @@ Idle
 ## Features
 
 * fully local execution
-
 * modular architecture (client / backend / model)
-
 * semantic memory with FAISS
-
 * LLM-powered memory enrichment (structured facts)
-
-* **improved retrieval with filtering (Unit 1.3)**
-
+* improved retrieval with filtering (Unit 1.3)
+* **memory lifecycle control (reset) (Unit 1.4)**
 * continuous interaction loop (voice + text)
-
 * API-first design
-
-* dual interface:
-
-  * Python voice client
-  * browser voice assistant
-
-* real-time interaction feedback (status indicator)
-
+* dual interface (Python + browser)
+* real-time interaction feedback
 * chat-based UI with persistence
-
-* decoupled LLM service (production-style architecture)
+* decoupled LLM service
 
 ---
 
@@ -320,24 +348,22 @@ Idle
 * browser voice input only works in Chrome/Edge
 * noticeable latency (LLM + TTS)
 * no streaming responses
-* backend memory is not persisted (resets on restart)
+* backend memory not persisted (resets on restart)
 * no structured reasoning layer (prompt-based only)
-* aggregation logic (e.g. “total pets”) is still imperfect
-* chat history only stored locally (browser)
+* aggregation logic still imperfect
 * requires local LLM service
 
 ---
 
 ## Future Improvements
 
-* memory deduplication and ranking (Unit 1.4)
-* memory reset endpoint (conversation lifecycle control)
-* structured user profile layer (hybrid memory)
-* persistent memory storage (disk or database)
-* hybrid retrieval (semantic + keyword / structured)
+* persistent memory (database or disk)
+* memory deduplication and ranking
+* hybrid retrieval (semantic + structured)
+* multi-user session support
 * streaming responses
 * real-time speech detection (VAD)
-* tool integration (APIs, external data)
+* tool integration (external APIs)
 * deployment (Docker / cloud)
 * LLM health checks & fallback
 
@@ -350,8 +376,9 @@ This project demonstrates a full-stack AI system with:
 * voice interaction (Python + browser)
 * semantic memory (FAISS)
 * LLM-driven knowledge extraction
-* improved retrieval with filtering and prompt guidance
+* retrieval filtering and prompt grounding
+* **memory lifecycle control (resettable state)**
 * backend API orchestration
 * local LLM integration
 
-It now moves beyond simple conversation history and introduces **knowledge-aware memory with retrieval control**, forming the foundation of a real **RAG-style AI agent**.
+It now behaves like a **stateful AI system**, where memory is not only used—but also **controlled**, marking a key step toward production-grade conversational agents.

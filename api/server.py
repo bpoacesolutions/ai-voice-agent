@@ -83,27 +83,27 @@ def ask_agent(request: QueryRequest):
 
     # ---- Prompt (IMPROVED) ----
     prompt = f"""
-You are a helpful AI assistant.
+        You are a helpful AI assistant.
 
-Use ALL available information to answer accurately.
+        Use ALL available information to answer accurately.
 
-Memory (past facts):
-{context}
+        Memory (past facts):
+        {context}
 
-Recent conversation:
-{history_text}
+        Recent conversation:
+        {history_text}
 
-Instructions:
-- Use memory when relevant
-- If the user asks about past facts, rely on memory
-- If multiple facts exist, combine them logically
-- Do NOT say "I don't know" if the answer exists in memory
+        Instructions:
+        - Use memory when relevant
+        - If the user asks about past facts, rely on memory
+        - If multiple facts exist, combine them logically
+        - Do NOT say "I don't know" if the answer exists in memory
 
-User question:
-{query}
+        User question:
+        {query}
 
-Answer:
-"""
+        Answer:
+        """
 
     # ---- LLM Call ----
     try:
@@ -153,3 +153,13 @@ Answer:
         "response": answer,
         "memory_used": filtered_memory
     }
+
+
+@app.post("/reset")
+def reset_memory():
+    global conversation_history
+
+    memory_store.reset()
+    conversation_history = []
+
+    return {"status": "memory_cleared"}

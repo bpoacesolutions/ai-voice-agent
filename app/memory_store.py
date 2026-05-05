@@ -73,3 +73,8 @@ class MemoryStore:
                 results.append((self.texts[idx], score))
 
         return results
+    
+    ### RESET MEMORY
+    def reset(self):
+        self.index.reset()
+        self.texts = []

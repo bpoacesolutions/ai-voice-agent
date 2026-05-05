@@ -169,10 +169,18 @@
             localStorage.setItem("chat_history", JSON.stringify(messages));
         }
 
-        function clearChat() {
+        async function clearChat() {
+            // Clear UI
             localStorage.removeItem("chat_history");
             messages = [];
             document.getElementById("chat").innerHTML = "";
+
+            // Call backend reset
+            await fetch("http://127.0.0.1:8000/reset", {
+                method: "POST"
+            });
+
+            document.getElementById("status").innerText = "Memory reset";
         }
 
         // -------------------------
