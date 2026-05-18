@@ -6,6 +6,8 @@ import requests
 
 from app.memory_store import MemoryStore
 
+from app.brain import AgentBrain
+
 # ---- Setup ----
 app = FastAPI()
 
@@ -21,6 +23,7 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 
 # ---- Memory ----
 memory_store = MemoryStore()
+brain = AgentBrain(memory_store)
 conversation_history = []
 
 # ---- Request schema ----
@@ -65,45 +68,19 @@ Facts:
 def ask_agent(request: QueryRequest):
     query = request.query
 
-    # ---- Retrieve memory (vector search) ----
-    raw_memory = memory_store.search(query, k=6)
-
-    # ---- Filter memory (lower distance = better) ----
-    filtered_memory = [
-        text for text, score in raw_memory if score < 1.5
-    ]
-
-    # fallback if filtering too aggressive
-    if not filtered_memory:
-        filtered_memory = [text for text, _ in raw_memory[:3]]
+    # ---- Brain Retrieval ----
+    filtered_memory = brain.retrieve_memory(query)
 
     # ---- Context ----
     context = "\n".join(filtered_memory)
     history_text = "\n".join(conversation_history[-4:])
 
     # ---- Prompt (IMPROVED) ----
-    prompt = f"""
-        You are a helpful AI assistant.
-
-        Use ALL available information to answer accurately.
-
-        Memory (past facts):
-        {context}
-
-        Recent conversation:
-        {history_text}
-
-        Instructions:
-        - Use memory when relevant
-        - If the user asks about past facts, rely on memory
-        - If multiple facts exist, combine them logically
-        - Do NOT say "I don't know" if the answer exists in memory
-
-        User question:
-        {query}
-
-        Answer:
-        """
+    prompt = brain.build_prompt(
+        query=query,
+        memory=filtered_memory,
+        history=conversation_history
+    )
 
     # ---- LLM Call ----
     try:

@@ -9,7 +9,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 class MemoryStore:
     def __init__(self):
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
+        # self.model = SentenceTransformer("all-MiniLM-L6-v2")
+        self.model = None
 
         self.dimension = 384
 
@@ -93,9 +94,9 @@ class MemoryStore:
         if len(self.texts) == 0:
             return False
 
-        new_embedding = self.model.encode([text])
+        new_embedding = self.get_model().encode([text])
 
-        existing_embeddings = self.model.encode(self.texts)
+        existing_embeddings = self.get_model().encode(self.texts)
 
         similarities = cosine_similarity(
             new_embedding,
@@ -127,7 +128,7 @@ class MemoryStore:
             print(f"⚠️ Skipping low-value memory: {text}")
             return
 
-        embedding = self.model.encode([text])
+        embedding = self.get_model().encode([text])
 
         self.index.add(
             np.array(embedding).astype("float32")
@@ -146,7 +147,7 @@ class MemoryStore:
         if len(self.texts) == 0:
             return []
 
-        query_embedding = self.model.encode([query])
+        query_embedding = self.get_model().encode([query])
 
         distances, indices = self.index.search(
             np.array(query_embedding).astype("float32"),
@@ -173,3 +174,12 @@ class MemoryStore:
         self._save()
 
         print("🧠 Memory reset complete")
+
+
+    # Get model
+    def get_model(self):
+        if self.model is None:
+            print("Loading embedding model...")
+            self.model = SentenceTransformer("all-MiniLM-L6-v2")
+
+        return self.model
