@@ -9,7 +9,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 class MemoryStore:
     def __init__(self):
-        # self.model = SentenceTransformer("all-MiniLM-L6-v2")
         self.model = None
 
         self.dimension = 384
@@ -34,7 +33,22 @@ class MemoryStore:
             self.index = faiss.read_index(self.index_path)
 
             with open(self.texts_path, "r") as f:
-                self.texts = json.load(f)
+                loaded_texts = json.load(f)
+
+            # ---- migration safety ----
+            self.texts = []
+
+            for item in loaded_texts:
+                # old format: plain string
+                if isinstance(item, str):
+                    self.texts.append({
+                        "text": item,
+                        "type": "fact"
+                    })
+
+                # new format: dict
+                elif isinstance(item, dict):
+                    self.texts.append(item)
 
         else:
             print("🆕 Creating new memory store...")
@@ -54,10 +68,14 @@ class MemoryStore:
     # -------------------------
     # MEMORY RANKING
     # -------------------------
-    def importance_score(self, text):
+    def importance_score(self, text, memory_type="fact"):
         text = text.lower()
 
         score = 0
+
+        # ---- reflection memories are valuable ----
+        if memory_type == "reflection":
+            score += 15
 
         # durable user facts
         important_keywords = [
@@ -66,14 +84,16 @@ class MemoryStore:
             "user works",
             "user lives",
             "user is",
-            "user has"
+            "user has",
+            "user enjoys",
+            "user prefers"
         ]
 
         for keyword in important_keywords:
             if keyword in text:
                 score += 10
 
-        # temporary conversation
+        # weak / noisy conversation
         weak_keywords = [
             "hello",
             "hi",
@@ -96,7 +116,9 @@ class MemoryStore:
 
         new_embedding = self.get_model().encode([text])
 
-        existing_embeddings = self.get_model().encode(self.texts)
+        existing_embeddings = self.get_model().encode(
+            [m["text"] for m in self.texts]
+        )
 
         similarities = cosine_similarity(
             new_embedding,
@@ -110,20 +132,23 @@ class MemoryStore:
     # -------------------------
     # ADD MEMORY
     # -------------------------
-    def add(self, text):
+    def add(self, text, memory_type="fact"):
         text = text.strip()
 
         if len(text) < 5:
             return
 
-        # deduplication
+        # ---- deduplication ----
         if self.memory_exists(text):
             print(f"⚠️ Skipping duplicate memory: {text}")
             return
 
-        score = self.importance_score(text)
+        score = self.importance_score(
+            text,
+            memory_type
+        )
 
-        # skip low-value memories
+        # ---- skip low-value memory ----
         if score < -3:
             print(f"⚠️ Skipping low-value memory: {text}")
             return
@@ -134,11 +159,14 @@ class MemoryStore:
             np.array(embedding).astype("float32")
         )
 
-        self.texts.append(text)
+        self.texts.append({
+            "text": text,
+            "type": memory_type
+        })
 
         self._save()
 
-        print(f"✅ Memory stored: {text}")
+        print(f"✅ Memory stored [{memory_type}]: {text}")
 
     # -------------------------
     # SEARCH
@@ -159,7 +187,11 @@ class MemoryStore:
         for idx, distance in zip(indices[0], distances[0]):
             if idx < len(self.texts):
                 results.append(
-                    (self.texts[idx], float(distance))
+                    (
+                        self.texts[idx]["text"],
+                        self.texts[idx]["type"],
+                        float(distance)
+                    )
                 )
 
         return results
@@ -175,11 +207,14 @@ class MemoryStore:
 
         print("🧠 Memory reset complete")
 
-
-    # Get model
+    # -------------------------
+    # MODEL LOADER
+    # -------------------------
     def get_model(self):
         if self.model is None:
             print("Loading embedding model...")
-            self.model = SentenceTransformer("all-MiniLM-L6-v2")
+            self.model = SentenceTransformer(
+                "all-MiniLM-L6-v2"
+            )
 
         return self.model

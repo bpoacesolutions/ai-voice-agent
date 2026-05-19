@@ -6,38 +6,41 @@ class AgentBrain:
     # MEMORY RETRIEVAL
     # -------------------------
     def retrieve_memory(self, query):
-        raw_memory = self.memory_store.search(query, k=6)
+        raw_memory = self.memory_store.search(query, k=8)
 
-        filtered_memory = [
-            text for text, score in raw_memory
-            if score < 1.5
-        ]
+        filtered_memory = []
 
-        # fallback
-        if len(filtered_memory) == 0 and len(raw_memory) > 0:
-            filtered_memory = [raw_memory[0][0]]
+        for text, memory_type, distance in raw_memory:
+
+            # reflections are more valuable
+            threshold = 1.8 if memory_type == "reflection" else 1.5
+
+            if distance < threshold:
+                filtered_memory.append(text)
+
+        # fallback if filtering removes everything
+        if len(filtered_memory) == 0:
+            filtered_memory = [
+                text for text, _, _ in raw_memory[:3]
+            ]
 
         return filtered_memory
 
     # -------------------------
-    # BUILD PROMPT
+    # PROMPT CONSTRUCTION
     # -------------------------
-    def build_prompt(
-        self,
-        query,
-        memory,
-        history
-    ):
+    def build_prompt(self, query, memory, history):
         memory_text = "\n".join(memory)
 
         history_text = "\n".join(history[-4:])
 
-        prompt = f"""
+        return f"""
 You are a helpful AI assistant.
 
-You must use memory when relevant.
+Use the user's long-term memory
+and conversation history to answer accurately.
 
-Memory:
+Long-term memory:
 {memory_text}
 
 Conversation history:
@@ -46,7 +49,11 @@ Conversation history:
 User question:
 {query}
 
+Rules:
+- Use memory when relevant
+- Be concise
+- Do not invent facts
+- If memory contains the answer, prioritize it
+
 Answer:
 """
-
-        return prompt

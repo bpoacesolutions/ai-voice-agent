@@ -100,8 +100,15 @@ def ask_agent(request: QueryRequest):
         answer = "Error: LLM service unavailable"
 
     # ---- Store raw conversation ----
-    memory_store.add(f"User: {query}")
-    memory_store.add(f"Agent: {answer}")
+    memory_store.add(
+        f"User: {query}",
+        memory_type="conversation"
+    )
+
+    memory_store.add(
+        f"Agent: {answer}",
+        memory_type="conversation"
+    )
 
     # ---- Store enriched memory ----
     try:
@@ -116,10 +123,39 @@ def ask_agent(request: QueryRequest):
         for fact in facts:
             # keep only meaningful user facts
             if len(fact) > 10 and "user" in fact.lower():
-                memory_store.add(fact)
+                memory_store.add(
+                    fact,
+                    memory_type="fact"
+                )
 
     except Exception as e:
         print("Memory summarization failed:", e)
+
+    # ---- Generate Reflection Memory ----
+    if len(memory_store.texts) % 8 == 0:
+        try:
+            recent_memories = [
+                m["text"]
+                for m in memory_store.texts[-8:]
+                if m["type"] == "fact"
+            ]
+
+            reflection = generate_reflection(recent_memories)
+
+            reflections = [
+                r.strip("- ").strip()
+                for r in reflection.split("\n")
+                if r.strip()
+            ]
+
+            for r in reflections:
+                memory_store.add(
+                    r,
+                    memory_type="reflection"
+                )
+
+        except Exception as e:
+            print("Reflection generation failed:", e)    
 
     # ---- Update history ----
     conversation_history.append(f"User: {query}")
@@ -140,3 +176,40 @@ def reset_memory():
     conversation_history = []
 
     return {"status": "memory_cleared"}
+
+
+def generate_reflection(memories):
+    joined_memories = "\n".join(memories)
+
+    prompt = f"""
+You are generating high-level reflections
+about a user based on long-term memories.
+
+Memories:
+{joined_memories}
+
+Generate short higher-level insights.
+
+Examples:
+- User is an animal lover
+- User enjoys outdoor activities
+- User values fitness
+
+Rules:
+- Only infer likely durable traits
+- Do not repeat raw facts
+- Keep reflections short
+
+Reflections:
+"""
+
+    response = requests.post(
+        OLLAMA_URL,
+        json={
+            "model": "llama3",
+            "prompt": prompt,
+            "stream": False
+        }
+    )
+
+    return response.json()["response"].strip()
