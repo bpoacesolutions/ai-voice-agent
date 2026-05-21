@@ -2,47 +2,53 @@
 
 ## Overview
 
-This project implements a modular AI voice agent capable of:
+This project implements a modular AI agent capable of:
 
-* understanding spoken or typed input
-* retrieving contextual memory using vector search (FAISS)
-* extracting and storing structured knowledge from conversations
-* generating responses using a local language model
-* replying with synthesized speech
+- understanding spoken or typed input
+- retrieving contextual memory using vector search (FAISS)
+- extracting durable facts from conversations
+- generating higher-level reflections about the user
+- building contextual prompts using layered memory
+- generating responses using a local LLM
+- replying through voice or browser chat interfaces
 
 The system supports both:
 
-* a **Python-based voice client**
-* a **browser-based voice assistant (full input/output loop with chat UI)**
+- a Python voice client
+- a browser-based conversational interface
 
-It follows a **service-oriented architecture**, separating interface, backend logic, and model execution.
+The architecture is modular and designed to evolve toward a production-grade long-term memory AI system.
 
 ---
 
-## Architecture
+# Architecture
 
 ```text
 Voice Client (app/)        OR        Web Interface (web/)
             ↓
         API Backend (api/)
             ↓
+     Agent Brain Layer
+            ↓
+   Memory System (FAISS)
+            ↓
      LLM Service (Ollama)
 ```
 
 ---
 
-## Components
+# Components
 
-### Voice Client (`app/`)
+## Voice Client (`app/`)
 
-Handles interaction via Python:
+Handles Python-based interaction:
 
-* audio recording (microphone)
-* speech-to-text transcription (Whisper)
-* API communication
-* text-to-speech playback (pyttsx3 with multiprocessing)
+- microphone recording
+- Whisper speech-to-text
+- API communication
+- text-to-speech playback (`pyttsx3`)
 
-Run:
+### Run
 
 ```bash
 python app/main.py
@@ -50,26 +56,25 @@ python app/main.py
 
 ---
 
-### Web Interface (`web/`)
+## Web Interface (`web/`)
 
-Browser-based voice assistant with a **chat-style interface**:
+Browser-based conversational UI:
 
-* text input
-* microphone input (speech recognition)
-* automatic API requests
-* persistent conversation display (localStorage)
-* browser-based text-to-speech playback
-* real-time interaction status (Listening / Thinking / Speaking)
-* **memory reset (sync with backend)**
+- text input
+- microphone input
+- persistent chat history
+- browser speech synthesis
+- interaction state feedback
+- synchronized memory reset
 
-Run:
+### Run
 
 ```bash
 cd web
 python -m http.server 3000
 ```
 
-Open:
+### Open
 
 ```text
 http://localhost:3000
@@ -77,52 +82,65 @@ http://localhost:3000
 
 ---
 
-## Browser Compatibility (Important)
+## Browser Compatibility
 
-Voice input relies on the **Web Speech API**.
+Voice input uses the Web Speech API.
 
 ### Supported
 
-* Chrome
-* Edge
+- Chrome
+- Edge
 
 ### Not Supported
 
-* Firefox
-
-If the microphone button appears unresponsive, use **Chrome** and allow microphone access.
+- Firefox
 
 ---
 
-### API Backend (`api/`)
+## API Backend (`api/`)
 
 Built with FastAPI.
 
-Responsibilities:
+### Responsibilities
 
-* semantic memory retrieval (FAISS vector search)
-* LLM-based memory enrichment (fact extraction)
-* memory filtering (distance-based relevance)
-* prompt construction with guided reasoning
-* short-term conversation tracking
-* **memory lifecycle control (reset endpoint)**
-* communication with the LLM service
+- memory retrieval
+- memory enrichment
+- prompt construction
+- reflection generation
+- short-term conversation tracking
+- communication with Ollama
+- memory lifecycle management
 
-Run:
+### Run
 
 ```bash
-uvicorn api.server:app
+uvicorn api.server:app --reload
 ```
 
 ---
 
-### Language Model Service
+## Agent Brain (`app/brain.py`)
 
-Powered by Ollama:
+The brain layer orchestrates:
 
-* Llama 3
+- layered memory retrieval
+- memory filtering
+- prompt grounding
+- context prioritization
 
-Run locally:
+It acts as the reasoning coordinator between memory and generation.
+
+---
+
+## LLM Service
+
+Powered locally with Ollama.
+
+### Current Model
+
+- Llama 3
+
+### Run
 
 ```bash
 ollama run llama3
@@ -130,123 +148,167 @@ ollama run llama3
 
 ---
 
-## Important: LLM Dependency
+# Memory System
 
-The API depends on a locally running LLM.
+## Current Design
 
-If Ollama is not running, requests will fail with:
+The memory system combines:
+
+- Sentence Transformers embeddings
+- FAISS vector similarity search
+- LLM-based fact extraction
+- reflection synthesis
+- layered memory retrieval
+
+### Embedding Model
 
 ```text
-ConnectionRefusedError: localhost:11434
-```
-
-Start it before using the system:
-
-```bash
-ollama run llama3
+all-MiniLM-L6-v2
 ```
 
 ---
 
-## Memory System
+# Memory Types
 
-### Current Design
-
-Uses:
-
-* sentence-transformers (`all-MiniLM-L6-v2`)
-* FAISS (vector similarity search)
-* LLM-based memory summarization
-* distance-based filtering for retrieval quality
+The system now stores different categories of memory.
 
 ---
 
-### How It Works
+## 1. Conversation Memory
 
-After each interaction:
-
-1. Raw conversation is stored
-2. The LLM extracts **durable user facts**
-3. Facts are stored as independent memory entries
-4. Future queries retrieve relevant memories via FAISS
-5. Low-quality matches are filtered using similarity distance
-
----
+Raw conversational history.
 
 ### Example
 
-Input:
-
 ```text
-User: I have 3 cats and 1 dog
+User: I own 2 dogs
 ```
 
-Stored as:
+### Used For
+
+- short-term continuity
+- conversational flow
+
+---
+
+## 2. Fact Memory
+
+Durable structured information extracted from conversations.
+
+### Example
 
 ```text
-User: I have 3 cats and 1 dog
-User owns 3 cats
-User owns 1 dog
+User owns 2 dogs
+```
+
+### Used For
+
+- long-term recall
+- personalization
+- retrieval grounding
+
+---
+
+## 3. Reflection Memory
+
+Higher-level insights inferred from accumulated facts.
+
+### Example
+
+```text
+User is an animal lover
+User values companionship
+```
+
+### Used For
+
+- personality continuity
+- behavioral grounding
+- deeper contextual prompting
+
+---
+
+# Memory Pipeline
+
+After each interaction:
+
+```text
+Conversation
+↓
+Fact Extraction
+↓
+Fact Storage
+↓
+Periodic Reflection Generation
+↓
+Reflection Storage
+↓
+Semantic Retrieval
+↓
+Prompt Construction
+↓
+LLM Response
 ```
 
 ---
 
-### Retrieval Improvement (Unit 1.3)
+# Reflection System (Unit 2.1)
 
-The system uses **filtered semantic retrieval**:
+The agent periodically synthesizes higher-level reflections from stored facts.
 
-* retrieves top-k memories
-* removes low-relevance results (distance threshold)
-* fallback ensures minimum context availability
+### Examples
 
-This improves:
+- User values companionship
+- User enjoys caring for animals
+- User prioritizes playful activities
 
-* recall accuracy
-* consistency
-* robustness against noisy memory
+This moves the system beyond raw memory storage into primitive behavioral modeling.
 
 ---
 
-### Memory Control (Unit 1.4)
+# Layered Retrieval (Unit 2.2)
 
-A **memory reset system** is now implemented:
+Memory retrieval now combines:
 
-* backend endpoint: `POST /reset`
+- recent conversation memories
+- durable facts
+- higher-level reflections
 
-* clears:
+This significantly improves:
 
-  * FAISS index
-  * stored memory texts
-  * conversation history
-
-* frontend “Clear” button now:
-
-  * clears UI (localStorage)
-  * calls backend reset
-  * synchronizes full system state
-
-This enables:
-
-* clean conversation sessions
-* better debugging
-* controlled experimentation
-* production-like state management
+- conversational continuity
+- personalization
+- long-term consistency
+- contextual grounding
 
 ---
 
-## API Endpoints
+# Memory Storage
 
-### POST `/ask`
+Memories are persisted locally:
 
-Request:
+```text
+data/memory.index
+data/memory.json
+```
+
+The system survives API restarts.
+
+---
+
+# API Endpoints
+
+## `POST /ask`
+
+### Request
 
 ```json
 {
-  "query": "What should I eat tonight?"
+  "query": "Tell me something about my pets"
 }
 ```
 
-Response:
+### Response
 
 ```json
 {
@@ -258,9 +320,15 @@ Response:
 
 ---
 
-### POST `/reset`
+## `POST /reset`
 
-Response:
+Clears:
+
+- FAISS index
+- stored memories
+- conversation history
+
+### Response
 
 ```json
 {
@@ -270,115 +338,104 @@ Response:
 
 ---
 
-## Full Pipeline
+# Full Pipeline
 
 ```text
-Voice input (Python or Browser)
-        OR
-Text input (Browser)
+Voice/Text Input
 ↓
-Speech Recognition (if applicable)
+Speech Recognition (optional)
 ↓
-API request (/ask)
+Memory Retrieval
 ↓
-Vector memory retrieval (FAISS)
+Layered Context Assembly
 ↓
-Memory filtering (distance threshold)
+Prompt Construction
 ↓
-Prompt construction (guided reasoning)
+LLM Generation
 ↓
-LLM request (Ollama)
+Fact Extraction
 ↓
-LLM response
+Reflection Generation
 ↓
-Memory enrichment (fact extraction)
+Memory Storage
 ↓
-Text-to-speech (Python or Browser)
-↓
-Chat UI update (browser)
+TTS / UI Response
 ```
 
 ---
 
-## Chat Interface
+# Features
 
-Features:
-
-* messages appended (not replaced)
-* clear user/agent separation
-* automatic scrolling
-* multi-turn conversations
-* persisted locally via localStorage
-* **synchronized reset with backend memory**
-
----
-
-## Interaction Flow
-
-```text
-Idle
-→ 🎤 Listening...
-→ Processing...
-→ Thinking...
-→ 🔊 Speaking...
-→ Idle
-```
+- fully local execution
+- semantic vector memory
+- layered memory architecture
+- durable fact extraction
+- reflection synthesis
+- contextual prompt grounding
+- modular brain layer
+- browser + Python interfaces
+- synchronized memory reset
+- persistent local memory
+- retrieval filtering
+- FAISS semantic search
+- Ollama local inference
 
 ---
 
-## Features
+# Current Limitations
 
-* fully local execution
-* modular architecture (client / backend / model)
-* semantic memory with FAISS
-* LLM-powered memory enrichment (structured facts)
-* improved retrieval with filtering (Unit 1.3)
-* **memory lifecycle control (reset) (Unit 1.4)**
-* continuous interaction loop (voice + text)
-* API-first design
-* dual interface (Python + browser)
-* real-time interaction feedback
-* chat-based UI with persistence
-* decoupled LLM service
+- reflection quality depends heavily on the LLM
+- reflections can still hallucinate weak personality traits
+- no structured memory conflict resolution yet
+- no streaming responses
+- browser voice support limited to Chrome/Edge
+- memory ranking heuristics are still simplistic
+- no multi-user isolation yet
 
 ---
 
-## Limitations
+# Future Improvements
 
-* browser voice input only works in Chrome/Edge
-* noticeable latency (LLM + TTS)
-* no streaming responses
-* backend memory not persisted (resets on restart)
-* no structured reasoning layer (prompt-based only)
-* aggregation logic still imperfect
-* requires local LLM service
+## Memory
 
----
-
-## Future Improvements
-
-* persistent memory (database or disk)
-* memory deduplication and ranking
-* hybrid retrieval (semantic + structured)
-* multi-user session support
-* streaming responses
-* real-time speech detection (VAD)
-* tool integration (external APIs)
-* deployment (Docker / cloud)
-* LLM health checks & fallback
+- memory decay
+- confidence scoring
+- contradiction detection
+- temporal memories
+- episodic memory grouping
+- hybrid symbolic + semantic retrieval
 
 ---
 
-## Summary
+## Agent Intelligence
 
-This project demonstrates a full-stack AI system with:
+- planning layer
+- tool usage
+- goal tracking
+- autonomous reflection scheduling
+- reinforcement-based memory ranking
 
-* voice interaction (Python + browser)
-* semantic memory (FAISS)
-* LLM-driven knowledge extraction
-* retrieval filtering and prompt grounding
-* **memory lifecycle control (resettable state)**
-* backend API orchestration
-* local LLM integration
+---
 
-It now behaves like a **stateful AI system**, where memory is not only used—but also **controlled**, marking a key step toward production-grade conversational agents.
+## Infrastructure
+
+- Docker deployment
+- Redis caching
+- PostgreSQL / vector DB support
+- Kubernetes orchestration
+- streaming inference
+- async processing
+
+---
+
+# Summary
+
+This project has evolved from a simple conversational assistant into a layered memory AI architecture capable of:
+
+- storing conversations
+- extracting durable knowledge
+- generating higher-level reflections
+- retrieving contextual memories semantically
+- grounding future responses using long-term context
+
+The system is now approaching the foundations of a true persistent conversational agent with evolving memory and behavioral continuity.
