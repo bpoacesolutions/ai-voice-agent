@@ -6,28 +6,42 @@ class AgentBrain:
     # MEMORY RETRIEVAL
     # -------------------------
     def retrieve_memory(self, query):
-        raw_memory = self.memory_store.search(query, k=8)
+        raw_memory = self.memory_store.search(query, k=10)
 
-        filtered_memory = []
+        filtered = []
 
-        for text, memory_type, distance in raw_memory:
+        for memory in raw_memory:
 
-            # reflections are more valuable
-            threshold = 1.8 if memory_type == "reflection" else 1.5
+            if memory["distance"] < 1.5:
+                filtered.append(memory["text"])
 
-            if distance < threshold:
-                filtered_memory.append(text)
-
-        # fallback if filtering removes everything
-        if len(filtered_memory) == 0:
-            filtered_memory = [
-                text for text, _, _ in raw_memory[:3]
-            ]
-
-        return filtered_memory
+        return filtered[:6]
 
     # -------------------------
-    # PROMPT CONSTRUCTION
+    # REFLECTION VALIDATION
+    # -------------------------
+    def validate_reflection(self, reflection):
+        reflection = reflection.lower()
+
+        banned_patterns = [
+            "work-life balance",
+            "likely",
+            "probably",
+            "maybe",
+            "possibly"
+        ]
+
+        for pattern in banned_patterns:
+            if pattern in reflection:
+                return False
+
+        if len(reflection) > 120:
+            return False
+
+        return True
+
+    # -------------------------
+    # PROMPT BUILDER
     # -------------------------
     def build_prompt(self, query, memory, history):
         memory_text = "\n".join(memory)
@@ -37,23 +51,17 @@ class AgentBrain:
         return f"""
 You are a helpful AI assistant.
 
-Use the user's long-term memory
-and conversation history to answer accurately.
+Use the memory and conversation history
+to answer accurately and consistently.
 
-Long-term memory:
+Memory:
 {memory_text}
 
-Conversation history:
+Conversation History:
 {history_text}
 
-User question:
+User:
 {query}
 
-Rules:
-- Use memory when relevant
-- Be concise
-- Do not invent facts
-- If memory contains the answer, prioritize it
-
-Answer:
+Assistant:
 """

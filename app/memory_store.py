@@ -19,6 +19,15 @@ class MemoryStore:
         self.index = None
         self.texts = []
 
+        self.memory_weights = {
+            "identity": 10,
+            "goal": 9,
+            "preference": 7,
+            "fact": 6,
+            "reflection": 5,
+            "conversation": 1
+        }
+
         self._load_or_initialize()
 
     # -------------------------
@@ -33,22 +42,7 @@ class MemoryStore:
             self.index = faiss.read_index(self.index_path)
 
             with open(self.texts_path, "r") as f:
-                loaded_texts = json.load(f)
-
-            # ---- migration safety ----
-            self.texts = []
-
-            for item in loaded_texts:
-                # old format: plain string
-                if isinstance(item, str):
-                    self.texts.append({
-                        "text": item,
-                        "type": "fact"
-                    })
-
-                # new format: dict
-                elif isinstance(item, dict):
-                    self.texts.append(item)
+                self.texts = json.load(f)
 
         else:
             print("🆕 Creating new memory store...")
@@ -66,34 +60,40 @@ class MemoryStore:
             json.dump(self.texts, f, indent=2)
 
     # -------------------------
+    # MODEL
+    # -------------------------
+    def get_model(self):
+        if self.model is None:
+            print("Loading embedding model...")
+            self.model = SentenceTransformer(
+                "all-MiniLM-L6-v2",
+                local_files_only=True
+            )
+
+        return self.model
+
+    # -------------------------
     # MEMORY RANKING
     # -------------------------
-    def importance_score(self, text, memory_type="fact"):
+    def importance_score(self, text, memory_type):
         text = text.lower()
 
-        score = 0
+        score = self.memory_weights.get(memory_type, 1)
 
-        # ---- reflection memories are valuable ----
-        if memory_type == "reflection":
-            score += 15
-
-        # durable user facts
         important_keywords = [
             "user owns",
             "user likes",
             "user works",
             "user lives",
-            "user is",
-            "user has",
-            "user enjoys",
-            "user prefers"
+            "user prefers",
+            "user goal",
+            "user is"
         ]
 
         for keyword in important_keywords:
             if keyword in text:
-                score += 10
+                score += 5
 
-        # weak / noisy conversation
         weak_keywords = [
             "hello",
             "hi",
@@ -138,17 +138,12 @@ class MemoryStore:
         if len(text) < 5:
             return
 
-        # ---- deduplication ----
         if self.memory_exists(text):
             print(f"⚠️ Skipping duplicate memory: {text}")
             return
 
-        score = self.importance_score(
-            text,
-            memory_type
-        )
+        score = self.importance_score(text, memory_type)
 
-        # ---- skip low-value memory ----
         if score < -3:
             print(f"⚠️ Skipping low-value memory: {text}")
             return
@@ -161,7 +156,8 @@ class MemoryStore:
 
         self.texts.append({
             "text": text,
-            "type": memory_type
+            "type": memory_type,
+            "score": score
         })
 
         self._save()
@@ -171,7 +167,7 @@ class MemoryStore:
     # -------------------------
     # SEARCH
     # -------------------------
-    def search(self, query, k=6):
+    def search(self, query, k=10):
         if len(self.texts) == 0:
             return []
 
@@ -186,18 +182,30 @@ class MemoryStore:
 
         for idx, distance in zip(indices[0], distances[0]):
             if idx < len(self.texts):
-                results.append(
-                    (
-                        self.texts[idx]["text"],
-                        self.texts[idx]["type"],
-                        float(distance)
-                    )
+
+                memory = self.texts[idx]
+
+                adjusted_score = (
+                    memory["score"] - float(distance)
                 )
+
+                results.append({
+                    "text": memory["text"],
+                    "type": memory["type"],
+                    "distance": float(distance),
+                    "score": memory["score"],
+                    "final_score": adjusted_score
+                })
+
+        results.sort(
+            key=lambda x: x["final_score"],
+            reverse=True
+        )
 
         return results
 
     # -------------------------
-    # RESET MEMORY
+    # RESET
     # -------------------------
     def reset(self):
         self.index = faiss.IndexFlatL2(self.dimension)
@@ -206,15 +214,3 @@ class MemoryStore:
         self._save()
 
         print("🧠 Memory reset complete")
-
-    # -------------------------
-    # MODEL LOADER
-    # -------------------------
-    def get_model(self):
-        if self.model is None:
-            print("Loading embedding model...")
-            self.model = SentenceTransformer(
-                "all-MiniLM-L6-v2"
-            )
-
-        return self.model

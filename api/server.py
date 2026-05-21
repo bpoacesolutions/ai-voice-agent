@@ -132,7 +132,12 @@ def ask_agent(request: QueryRequest):
         print("Memory summarization failed:", e)
 
     # ---- Generate Reflection Memory ----
-    if len(memory_store.texts) % 8 == 0:
+    fact_count = len([
+        m for m in memory_store.texts
+        if m["type"] == "fact"
+    ])
+
+    if fact_count >= 4 and fact_count % 4 == 0:
         try:
             recent_memories = [
                 m["text"]
@@ -148,11 +153,17 @@ def ask_agent(request: QueryRequest):
                 if r.strip()
             ]
 
-            for r in reflections:
-                memory_store.add(
-                    r,
-                    memory_type="reflection"
-                )
+            for reflection in reflections:
+
+                if brain.validate_reflection(reflection):
+
+                    memory_store.add(
+                        reflection,
+                        memory_type="reflection"
+                    )
+
+                else:
+                    print(f"⚠️ Rejected weak reflection: {reflection}")
 
         except Exception as e:
             print("Reflection generation failed:", e)    
@@ -188,17 +199,25 @@ about a user based on long-term memories.
 Memories:
 {joined_memories}
 
-Generate short higher-level insights.
-
-Examples:
-- User is an animal lover
-- User enjoys outdoor activities
-- User values fitness
+Generate ONLY short durable reflections.
 
 Rules:
-- Only infer likely durable traits
-- Do not repeat raw facts
-- Keep reflections short
+- One reflection per line
+- Keep them short
+- No explanations
+- No numbering
+- No intro sentence
+- No speculative psychology
+- Avoid weak guesses
+
+Good Examples:
+- User is an animal lover
+- User enjoys active hobbies
+- User values companionship
+
+Bad Examples:
+- User probably values work-life balance
+- The user may possibly enjoy...
 
 Reflections:
 """
