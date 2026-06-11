@@ -32,23 +32,56 @@ class QueryRequest(BaseModel):
 
 
 # ---- Memory Summarizer ----
-def summarize_memory(query, answer):
-    prompt = f"""
-Extract key facts about the user from this conversation.
+def evaluate_memory(query, answer):
 
-Focus on durable information (things that remain true over time).
-Avoid conversational phrases.
+    prompt = f"""
+You are a memory extraction system.
+
+Determine whether this conversation contains
+durable information worth storing.
+
+Memory Types:
+
+identity:
+- occupation
+- family
+- pets
+- location
+- personal background
+
+preference:
+- likes
+- dislikes
+- favorite things
+
+goal:
+- things the user wants to achieve
+
+fact:
+- useful long-term information
+
+conversation:
+- temporary information
+- DO NOT STORE
+
+Rules:
+
+Return ONLY lines formatted as:
+
+TYPE|memory
 
 Examples:
-- User owns 3 cats
-- User works as a developer
-- User lives in Paris
+
+identity|User owns 2 dogs
+preference|User likes jazz music
+goal|User wants to learn Python
 
 Conversation:
-User: {query}
-Agent: {answer}
 
-Facts:
+User: {query}
+Assistant: {answer}
+
+Output:
 """
 
     response = requests.post(
@@ -60,7 +93,7 @@ Facts:
         }
     )
 
-    return response.json().get("response", "").strip()
+    return response.json()["response"].strip()
 
 
 # ---- API Endpoint ----
@@ -110,26 +143,49 @@ def ask_agent(request: QueryRequest):
         memory_type="conversation"
     )
 
-    # ---- Store enriched memory ----
+    # ---- LLM Memory Evaluation ----
     try:
-        summary = summarize_memory(query, answer)
 
-        facts = [
-            f.strip("- ").strip()
-            for f in summary.split("\n")
-            if f.strip()
-        ]
+        memory_candidates = evaluate_memory(
+            query,
+            answer
+        )
 
-        for fact in facts:
-            # keep only meaningful user facts
-            if len(fact) > 10 and "user" in fact.lower():
-                memory_store.add(
-                    fact,
-                    memory_type="fact"
-                )
+        for line in memory_candidates.split("\n"):
+
+            line = line.strip()
+
+            if "|" not in line:
+                continue
+
+            memory_type, memory_text = line.split(
+                "|",
+                1
+            )
+
+            memory_type = memory_type.strip().lower()
+            memory_text = memory_text.strip()
+
+            allowed_types = [
+                "identity",
+                "preference",
+                "goal",
+                "fact"
+            ]
+
+            if memory_type not in allowed_types:
+                continue
+
+            memory_store.add(
+                memory_text,
+                memory_type=memory_type
+            )
 
     except Exception as e:
-        print("Memory summarization failed:", e)
+        print(
+            "Memory evaluation failed:",
+            e
+        )
 
     # ---- Generate Reflection Memory ----
     fact_count = len([

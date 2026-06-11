@@ -164,7 +164,7 @@ class MemoryStore:
 
         print(f"✅ Memory stored [{memory_type}]: {text}")
 
-    # -------------------------
+        # -------------------------
     # SEARCH
     # -------------------------
     def search(self, query, k=10):
@@ -181,21 +181,30 @@ class MemoryStore:
         results = []
 
         for idx, distance in zip(indices[0], distances[0]):
-            if idx < len(self.texts):
 
-                memory = self.texts[idx]
+            if idx >= len(self.texts):
+                continue
 
-                adjusted_score = (
-                    memory["score"] - float(distance)
-                )
+            if idx == -1:
+                continue
 
-                results.append({
-                    "text": memory["text"],
-                    "type": memory["type"],
-                    "distance": float(distance),
-                    "score": memory["score"],
-                    "final_score": adjusted_score
-                })
+            if distance > 1e20:
+                continue
+
+            memory = self.texts[idx]
+
+            final_score = (
+                memory["score"]
+                - float(distance)
+            )
+
+            results.append({
+                "text": memory["text"],
+                "type": memory["type"],
+                "distance": float(distance),
+                "score": memory["score"],
+                "final_score": final_score
+            })
 
         results.sort(
             key=lambda x: x["final_score"],
